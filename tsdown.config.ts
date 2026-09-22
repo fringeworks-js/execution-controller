@@ -60,14 +60,14 @@ export default defineConfig({
             import: { types: './*/index.d.mts', default: './*/index.mjs' },
             require: { types: './*/index.d.cts', default: './*/index.cjs' },
           },
-          './isCancelError': {
+          './isCanceled': {
             import: {
-              types: './isCancelError.d.mts',
-              default: './isCancelError.mjs',
+              types: './isCanceled.d.mts',
+              default: './isCanceled.mjs',
             },
             require: {
-              types: './isCancelError.d.cts',
-              default: './isCancelError.cjs',
+              types: './isCanceled.d.cts',
+              default: './isCanceled.cjs',
             },
           },
         },

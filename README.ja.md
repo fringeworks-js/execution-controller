@@ -11,7 +11,7 @@ Debounce, Throttle, Serial, Parallel, Exclusive など、\
 - 統一された API: 全てのコントローラーが wrap および wrapMethod を持ち、既存の関数を簡単に拡張できます。
 - 柔軟なキャンセルポリシー: 実行制限時の挙動を ignore (解決しない), reject (例外), resolve (CANCEL値を返す) から選択可能。
 - TypeScript ネイティブ: 完全な型定義により、ラップされた関数の引数や戻り値の型が維持されます。
-- ステートフル: 現在の実行数（running）や実行中かどうかのフラグ（isRunning）をリアルタイムに確認できます。
+- ステートフル: 現在の実行数（executing）や実行中かどうかのフラグ（isExecuting）をリアルタイムに確認できます。
 
 ## インストール
 

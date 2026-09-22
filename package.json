@@ -1,6 +1,6 @@
 {
   "name": "@niche-works/execution-controller",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "keywords": [
     "function"
@@ -16,7 +16,7 @@
     "./*": "./src/*/index.ts",
     "./constants": "./src/constants.ts",
     "./*/constants": "./src/*/constants.ts",
-    "./isCancelError": "./src/isCancelError"
+    "./isCanceled": "./src/isCanceled"
   },
   "main": "./src/index.ts",
   "module": "./src/index.ts",
