@@ -3,33 +3,36 @@ import type { MethodKeys, MethodType } from './_types';
 import { CANCEL } from './constants';
 
 /**
- * 戻り値(promise)
+ * 関数の実行がキャンセルされた場合の動作
+ *
+ * - 'ignore': 何もしない
+ * - 'resolve': 正常処理の戻り値にCANCELを返す
+ * - 'reject': 例外処理の戻り値にCANCELを返す
  */
-export type AwaitedReturn<T extends SyncLooseFunction> =
-  | Promise<ReturnType<T>>
-  | Promise<typeof CANCEL>;
+export type CancelPolicy = 'ignore' | 'resolve' | 'reject';
 
 /**
- * 汎用的な関数をラップしてpromiseの戻り値を返す関数
+ * 実行をコントロールされた関数の戻り値
  */
-export type AwaitedReturnFunction<T extends SyncLooseFunction> = (
-  ...args: Parameters<T>
-) => AwaitedReturn<T>;
+export type ControlledReturn<
+  F extends SyncLooseFunction,
+  P extends CancelPolicy,
+> = P extends 'resolve' ? ReturnType<F> | typeof CANCEL : ReturnType<F>;
 
 /**
- * コントローラーの関数
+ * 実行をコントロールされた関数
  */
-export type ControllerFunction<T extends SyncLooseFunction> = (
-  scope: unknown,
-  args: Parameters<T>,
-) => AwaitedReturn<T>;
+export type ControlledFunction<
+  F extends SyncLooseFunction,
+  P extends CancelPolicy,
+> = (...args: Parameters<F>) => Promise<ControlledReturn<F, P>>;
 
 /**
- * 関数グループ
+ * 関数制御インターフェイス
  */
-export interface FunctionController<T extends string> {
+export interface ExecutionController<T extends string, P extends CancelPolicy> {
   /**
-   * グループ種別
+   * コントローラー種別
    */
   get type(): T;
 
@@ -49,7 +52,7 @@ export interface FunctionController<T extends string> {
    */
   wrap<T extends SyncLooseFunction>(
     fn: T | null | undefined,
-  ): AwaitedReturnFunction<T> | null | undefined;
+  ): ControlledFunction<T, P> | null | undefined;
 
   /**
    * メソッドをラップする
@@ -59,5 +62,5 @@ export interface FunctionController<T extends string> {
   wrapMethod<I extends object, K extends MethodKeys<I>>(
     instance: I,
     method: K,
-  ): AwaitedReturnFunction<MethodType<I, K>> | undefined;
+  ): ControlledFunction<MethodType<I, K>, P> | undefined;
 }

@@ -1,7 +1,8 @@
 import type { SyncLooseFunction } from '@niche-works/types';
+import type { WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import type { AwaitedReturn, ControllerFunction } from '../types';
+import type { CancelPolicy } from '../types';
 import { DebounceControllerType } from './constants';
 import type { DebounceControllerOptions } from './types';
 
@@ -10,7 +11,9 @@ import type { DebounceControllerOptions } from './types';
  * 指定時間内に再呼び出しがなければ実行。
  * 前回の実行が完了していない場合は、完了を待ってから連続して実行します。
  */
-export default class DebounceController extends ExecutionControllerBase<DebounceControllerType> {
+export default class DebounceController<
+  P extends CancelPolicy = 'ignore',
+> extends ExecutionControllerBase<DebounceControllerType, P> {
   // 待ち時間
   private _wait: number;
 
@@ -38,11 +41,11 @@ export default class DebounceController extends ExecutionControllerBase<Debounce
     this._sequential = sequential ?? false;
   }
 
-  _wrap<T extends SyncLooseFunction>(fn: T): ControllerFunction<T> {
+  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
     const me = this;
     const execute = me._createExecutionFn(fn);
 
-    return (scope: unknown, args: Parameters<T>): AwaitedReturn<T> => {
+    return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       return new Promise((resolve, reject) => {
         // 1. すでに待機中のタイマーがあればキャンセル（最新の呼び出しを優先）
         if (me._waiting) {

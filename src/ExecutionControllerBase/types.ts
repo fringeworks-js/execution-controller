@@ -1,3 +1,5 @@
+import type { CancelPolicy } from '../types';
+
 export type ExecutionControllerBaseOptions<
   T extends string,
   P extends CancelPolicy = 'ignore',
@@ -27,5 +29,3 @@ export type ExecutionControllerBaseOptionsBase<
    */
   cancelPolicy?: P;
 };
-
-export type CancelPolicy = 'ignore' | 'resolve' | 'reject';

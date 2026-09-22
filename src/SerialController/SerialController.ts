@@ -1,7 +1,8 @@
 import type { SyncLooseFunction } from '@niche-works/types';
 import { alwaysVoid } from '@niche-works/utils';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import type { AwaitedReturn, ControllerFunction } from '../types';
+import type { WrappedFunction, WrappedReturn } from '../_types';
+import type { CancelPolicy } from '../types';
 import { SerialControllerType } from './constants';
 import type { SerialControllerOptions } from './types';
 
@@ -11,7 +12,9 @@ import type { SerialControllerOptions } from './types';
  * 実行中に関数が呼ばれた場合、それらはキュー（待ち行列）に追加され、\
  * 現在の処理が完了し次第、古い順から順次実行される
  */
-export default class SerialController extends ExecutionControllerBase<SerialControllerType> {
+export default class SerialController<
+  P extends CancelPolicy = 'ignore',
+> extends ExecutionControllerBase<SerialControllerType, P> {
   /**
    * 最後に実行した関数のpromise
    */
@@ -22,10 +25,10 @@ export default class SerialController extends ExecutionControllerBase<SerialCont
     super({ ...options, type: SerialControllerType });
   }
 
-  _wrap<T extends SyncLooseFunction>(fn: T): ControllerFunction<T> {
+  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
     const me = this;
     const execute = me._createExecutionFn(fn);
-    return (scope: unknown, args: Parameters<T>): AwaitedReturn<T> => {
+    return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       // 現在の_tailを退避
       const currentTail = me._tail;
       // 実行関数を定義

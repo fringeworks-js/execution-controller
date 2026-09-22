@@ -106,7 +106,7 @@ class SearchComponent {
 ##### wrap
 
 ```ts
-wrap<F>(fn: F): PolicyAwareFunction<F, P>
+wrap<F>(fn: F): ControlledFunction<F, P>
 ```
 
 関数をコントローラーの制御下にラップします。
@@ -117,7 +117,7 @@ wrap<F>(fn: F): PolicyAwareFunction<F, P>
 ##### wrapMethod
 
 ```ts
-wrapMethod<I, K>(instance: I, method: K): PolicyAwareFunction<...>
+wrapMethod<I, K>(instance: I, method: K): ControlledFunction<...>
 ```
 
 インスタンスのメソッドを、this コンテキストを維持したままラップします。

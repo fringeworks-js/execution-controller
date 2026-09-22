@@ -107,7 +107,7 @@ All controllers extend `ExecutionControllerBase` and share the following:
 ##### wrap
 
 ```ts
-wrap<F>(fn: F): PolicyAwareFunction<F, P>
+wrap<F>(fn: F): ControlledFunction<F, P>
 ```
 
 Wraps a function with controller logic.
@@ -118,7 +118,7 @@ Wraps a function with controller logic.
 ##### wrapMethod
 
 ```ts
-wrapMethod<I, K>(instance: I, method: K): PolicyAwareFunction<...>
+wrapMethod<I, K>(instance: I, method: K): ControlledFunction<...>
 ```
 
 Wraps an instance method while preserving its `this` context.

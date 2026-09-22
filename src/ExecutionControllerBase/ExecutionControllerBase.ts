@@ -1,28 +1,33 @@
 import type { SyncLooseFunction } from '@niche-works/types';
-import type { MethodKeys, MethodType } from '../_types';
+import type {
+  MethodKeys,
+  MethodType,
+  WrappedFunction,
+  WrappedReturn,
+} from '../_types';
 import { CANCEL } from '../constants';
 import type {
-  AwaitedReturn,
-  ControllerFunction,
-  FunctionController,
+  CancelPolicy,
+  ControlledFunction,
+  ExecutionController,
 } from '../types';
-import type { CancelPolicy, ExecutionControllerBaseOptions } from './types';
+import type { ExecutionControllerBaseOptions } from './types';
 
-/**
- * ポリシーに応じた戻り値の型を判定する
- */
-type PolicyAwareReturn<
-  F extends SyncLooseFunction,
-  P extends CancelPolicy,
-> = P extends 'resolve' ? ReturnType<F> | typeof CANCEL : ReturnType<F>;
-
-/**
- * ポリシーに応じた関数型を判定する
- */
-type PolicyAwareFunction<
-  F extends SyncLooseFunction,
-  P extends CancelPolicy,
-> = (...args: Parameters<F>) => Promise<PolicyAwareReturn<F, P>>;
+// キャンセル処理用の関数
+const CANCEL_FUNCTIONS = {
+  reject: () => {
+    // rejectの場合は、CANCELをthrow
+    throw CANCEL;
+  },
+  resolve: () => {
+    // resolveの場合は、そのままCANCELを返す
+    return CANCEL;
+  },
+  ignore: () => {
+    // ignoreの場合は、解決しないPromiseを返して呼び出し側を待機状態にする
+    return new Promise(() => {});
+  },
+} as const;
 
 /**
  * コントローラーの基底クラス
@@ -30,7 +35,7 @@ type PolicyAwareFunction<
 export default abstract class ExecutionControllerBase<
   T extends string,
   P extends CancelPolicy = 'ignore',
-> implements FunctionController<T> {
+> implements ExecutionController<T, P> {
   /**
    * コントローラー種別
    */
@@ -54,7 +59,7 @@ export default abstract class ExecutionControllerBase<
   constructor(options: ExecutionControllerBaseOptions<T, P>) {
     this._type = options.type;
     this._id = options.id;
-    this._cancelPolicy = options.cancelPolicy ?? 'ignore';
+    this._cancelPolicy = options.cancelPolicy || 'ignore';
   }
 
   /**
@@ -110,7 +115,7 @@ export default abstract class ExecutionControllerBase<
     return async (scope: unknown, args: unknown[]) => {
       try {
         this._start();
-        return (await fn.apply(scope, args)) as AwaitedReturn<T>;
+        return (await fn.apply(scope, args)) as WrappedReturn<T>;
       } finally {
         this._finish();
       }
@@ -128,10 +133,10 @@ export default abstract class ExecutionControllerBase<
    * @returns
    */
   private _applyPolicy<T extends SyncLooseFunction>(
-    wrapedFn: ControllerFunction<T>,
+    wrapedFn: WrappedFunction<T>,
     scope?: unknown | null,
-  ): PolicyAwareFunction<T, P> {
-    const cancelPolicy = this._cancelPolicy;
+  ): ControlledFunction<T, P> {
+    const cancelFn = CANCEL_FUNCTIONS[this._cancelPolicy];
 
     return async function (
       this: unknown,
@@ -140,15 +145,7 @@ export default abstract class ExecutionControllerBase<
       const result = await wrapedFn(scope !== undefined ? scope : this, args);
 
       if (result === CANCEL) {
-        if (cancelPolicy === 'reject') {
-          throw CANCEL;
-        }
-        if (cancelPolicy === 'resolve') {
-          // resolveの場合はそのままCANCELを返す
-          return CANCEL;
-        }
-        // 解決しないPromiseを返して呼び出し側を待機状態にする
-        return new Promise(() => {});
+        return cancelFn();
       } else {
         return result;
       }
@@ -163,7 +160,7 @@ export default abstract class ExecutionControllerBase<
    */
   wrap<T extends SyncLooseFunction>(
     fn: T | null | undefined,
-  ): PolicyAwareFunction<T, P> | undefined {
+  ): ControlledFunction<T, P> | undefined {
     if (!fn) {
       return undefined;
     }
@@ -184,7 +181,7 @@ export default abstract class ExecutionControllerBase<
   wrapMethod<I extends object, K extends MethodKeys<I>>(
     instance: I,
     method: K,
-  ): PolicyAwareFunction<MethodType<I, K>, P> | undefined {
+  ): ControlledFunction<MethodType<I, K>, P> | undefined {
     const fn = instance[method];
     if (typeof fn !== 'function') {
       return undefined;
@@ -194,7 +191,7 @@ export default abstract class ExecutionControllerBase<
     return this._applyPolicy(
       this._wrap(fn as SyncLooseFunction),
       instance,
-    ) as PolicyAwareFunction<MethodType<I, K>, P>;
+    ) as ControlledFunction<MethodType<I, K>, P>;
   }
 
   /**
@@ -203,5 +200,5 @@ export default abstract class ExecutionControllerBase<
    */
   protected abstract _wrap<T extends SyncLooseFunction>(
     fn: T,
-  ): ControllerFunction<T>;
+  ): WrappedFunction<T>;
 }

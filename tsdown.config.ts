@@ -30,28 +30,45 @@ export default defineConfig({
         module: './index.mjs',
         exports: {
           '.': {
-            import: './index.mjs',
-            require: './index.cjs',
+            import: { types: './index.d.mts', default: './index.mjs' },
+            require: { types: './index.d.cts', default: './index.cjs' },
           },
-          './*': {
-            import: './*/index.mjs',
-            require: './*/index.cjs',
-          },
+          './package.json': './package.json',
           './constants': {
-            import: './constants.mjs',
-            require: './constants.cjs',
+            import: { types: './constants.d.mts', default: './constants.mjs' },
+            require: { types: './constants.d.cts', default: './constants.cjs' },
           },
           './*/constants': {
-            import: './*/constants.mjs',
-            require: './*/constants.cjs',
+            import: {
+              types: './*/constants.d.mts',
+              default: './*/constants.mjs',
+            },
+            require: {
+              types: './*/constants.d.cts',
+              default: './*/constants.cjs',
+            },
           },
           './types': {
-            import: './types.mjs',
-            require: './types.cjs',
+            import: { types: './types.d.mts', default: './types.mjs' },
+            require: { types: './types.d.cts', default: './types.cjs' },
+          },
+          './*/types': {
+            import: { types: './*/types.d.mts', default: './*/types.mjs' },
+            require: { types: './*/types.d.cts', default: './*/types.cjs' },
+          },
+          './*': {
+            import: { types: './*/index.d.mts', default: './*/index.mjs' },
+            require: { types: './*/index.d.cts', default: './*/index.cjs' },
           },
           './isCancelError': {
-            import: './isCancelError.mjs',
-            require: './isCancelError.cjs',
+            import: {
+              types: './isCancelError.d.mts',
+              default: './isCancelError.mjs',
+            },
+            require: {
+              types: './isCancelError.d.cts',
+              default: './isCancelError.cjs',
+            },
           },
         },
       },

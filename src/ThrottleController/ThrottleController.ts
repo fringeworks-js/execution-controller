@@ -1,7 +1,8 @@
 import type { SyncLooseFunction } from '@niche-works/types';
+import type { WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import type { AwaitedReturn, ControllerFunction } from '../types';
+import type { CancelPolicy } from '../types';
 import { ThrottleControllerType } from './constants';
 import type { ThrottleControllerOptions } from './types';
 
@@ -10,7 +11,9 @@ import type { ThrottleControllerOptions } from './types';
  * 最初に関数を実行した後、指定時間（wait）が経過するまで次の実行を禁止する\
  * クールタイム中に呼ばれた関数は無視される\
  */
-export default class ThrottleController extends ExecutionControllerBase<ThrottleControllerType> {
+export default class ThrottleController<
+  P extends CancelPolicy = 'ignore',
+> extends ExecutionControllerBase<ThrottleControllerType, P> {
   // 待ち時間
   private _wait: number;
 
@@ -39,11 +42,11 @@ export default class ThrottleController extends ExecutionControllerBase<Throttle
    * 関数をラップする
    * クールタイム中の呼び出しは無視され、undefined を返す
    */
-  _wrap<T extends SyncLooseFunction>(fn: T): ControllerFunction<T> {
+  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
     const me = this;
     const execute = me._createExecutionFn(fn);
 
-    return (scope: unknown, args: Parameters<T>): AwaitedReturn<T> => {
+    return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       // クールタイム中なら即座に CANCEL を返す
       if (me._isThrottling) {
         return Promise.resolve(CANCEL);

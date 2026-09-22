@@ -1,6 +1,7 @@
 import type { SyncLooseFunction } from '@niche-works/types';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import type { AwaitedReturn, ControllerFunction } from '../types';
+import type { WrappedFunction, WrappedReturn } from '../_types';
+import type { CancelPolicy } from '../types';
 import { ParallelControllerType } from './constants';
 import type { ParallelControllerOptions } from './types';
 
@@ -10,7 +11,9 @@ import type { ParallelControllerOptions } from './types';
  * 上限に達している間に呼ばれた関数はキューに蓄積され、\
  * 実行中のいずれかの処理が完了して枠が空き次第、順次開始される
  */
-export default class ParallelController extends ExecutionControllerBase<ParallelControllerType> {
+export default class ParallelController<
+  P extends CancelPolicy = 'ignore',
+> extends ExecutionControllerBase<ParallelControllerType, P> {
   /**
    * 同時実行の上限数
    */
@@ -37,11 +40,11 @@ export default class ParallelController extends ExecutionControllerBase<Parallel
   /**
    * 関数をラップする
    */
-  _wrap<T extends SyncLooseFunction>(fn: T): ControllerFunction<T> {
+  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
     const me = this;
     const execute = me._createExecutionFn(fn);
 
-    return (scope: unknown, args: Parameters<T>): AwaitedReturn<T> => {
+    return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       return new Promise((resolve, reject) => {
         // タスクをキューに追加
         me._queue.push({
