@@ -42,9 +42,26 @@ export interface ExecutionController<T extends string, P extends CancelPolicy> {
   get id(): string;
 
   /**
+   * 実行中の件数
+   */
+  get executing(): number;
+
+  /**
    * 実行中か
    */
   get isExecuting(): boolean;
+
+  /**
+   * 実行状態の変更を購読する
+   * @param listener
+   * @returns 購読を解除する関数
+   */
+  subscribe(listener: () => void): () => void;
+
+  /**
+   * 実行を待機している呼び出しを全てキャンセルする
+   */
+  cancel(): void;
 
   /**
    * 関数をラップする

@@ -1,5 +1,4 @@
 import type { SyncLooseFunction } from '@niche-works/types';
-import { alwaysVoid } from '@niche-works/utils';
 import ExecutionControllerBase from '../ExecutionControllerBase';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import type { CancelPolicy } from '../types';
@@ -29,15 +28,12 @@ export default class SerialController<
     const me = this;
     const execute = me._createExecutionFn(fn);
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
-      // 現在の_tailを退避
-      const currentTail = me._tail;
-      // 実行関数を定義
-      const run = () => execute(scope, args);
+      // 実行を待機する呼び出しを作成
+      const { promise, run } = me._createPending(execute, scope, args);
       // _tail が解決済み（実行中でない）なら即座に実行を開始し、
       // そうでなければ then の中で実行する
-      const promise = me.isExecuting ? currentTail.then(run) : run();
-      // エラーでも次が続けられるようにalwaysVoidを仕込んでおく
-      me._tail = promise.then(alwaysVoid).catch(alwaysVoid);
+      // runはrejectされないため、エラーでも次が続けられる
+      me._tail = me.isExecuting ? me._tail.then(run) : run();
 
       return promise;
     };

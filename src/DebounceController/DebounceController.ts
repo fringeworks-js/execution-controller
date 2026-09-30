@@ -1,6 +1,5 @@
 import type { SyncLooseFunction } from '@niche-works/types';
 import type { WrappedFunction, WrappedReturn } from '../_types';
-import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
 import type { CancelPolicy } from '../types';
 import { DebounceControllerType } from './constants';
@@ -25,13 +24,13 @@ export default class DebounceController<
    */
   private _waiting: {
     timeout: ReturnType<typeof setTimeout>;
-    resolve: (value: any) => void;
+    cancel: () => void;
   } | null = null;
 
   /**
    * 実行中のPromise（sequential用）
    */
-  private _tail: Promise<any> = Promise.resolve();
+  private _tail: Promise<void> = Promise.resolve();
 
   constructor(options: DebounceControllerOptions) {
     const { wait, sequential, ...rest } = options;
@@ -46,35 +45,47 @@ export default class DebounceController<
     const execute = me._createExecutionFn(fn);
 
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
-      return new Promise((resolve, reject) => {
-        // 1. すでに待機中のタイマーがあればキャンセル（最新の呼び出しを優先）
-        if (me._waiting) {
-          clearTimeout(me._waiting.timeout);
-          me._waiting.resolve(CANCEL);
-          me._waiting = null;
+      // 1. すでに待機中のタイマーがあればキャンセル（最新の呼び出しを優先）
+      me._clearWaiting();
+
+      const { promise, run, cancel } = me._createPending(execute, scope, args);
+
+      // 新しいタイマーをセット
+      const timeout = setTimeout(() => {
+        // 実行できたのでクリア
+        me._waiting = null;
+
+        if (me._sequential) {
+          // 前回の関数の実行が終わるのを待ってから、今回の実行を開始する
+          // runはrejectされないため、前の実行がエラーでも次へ進む
+          me._tail = me._tail.then(run);
+        } else {
+          //sequentialがfalseの場合は、完了を待たずに即実行
+          run();
         }
+      }, me._wait);
+      me._waiting = { timeout, cancel };
 
-        // 新しいタイマーをセット
-        const timeout = setTimeout(() => {
-          // 実行できたのでクリア
-          me._waiting = null;
-
-          if (me._sequential) {
-            // 前回の関数の実行が終わるのを待ってから、今回の実行を開始する
-            me._tail = me._tail
-              .then(async () => {
-                execute(scope, args).then(resolve).catch(reject);
-              })
-              .catch(() => {
-                // 前の実行がエラーでも次へ進む
-              });
-          } else {
-            //sequentialがfalseの場合は、完了を待たずに即実行
-            execute(scope, args).then(resolve).catch(reject);
-          }
-        }, me._wait);
-        me._waiting = { timeout, resolve };
-      });
+      return promise;
     };
+  }
+
+  /**
+   * 実行を待機している呼び出しを全てキャンセルする
+   */
+  cancel(): void {
+    this._clearWaiting();
+    super.cancel();
+  }
+
+  /**
+   * 待機中のタイマーを止め、その呼び出しをキャンセルする
+   */
+  private _clearWaiting() {
+    if (this._waiting) {
+      clearTimeout(this._waiting.timeout);
+      this._waiting.cancel();
+      this._waiting = null;
+    }
   }
 }

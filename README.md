@@ -129,6 +129,27 @@ Wraps an instance method while preserving its `this` context.
 
 - **Returns**: wrapped function with `this` bound to the instance
 
+##### subscribe
+
+```ts
+subscribe(listener: () => void): () => void
+```
+
+Subscribes to changes in the execution state (`executing` / `isExecuting`).\
+The listener is called when a function starts or finishes executing.
+
+- **Arguments**: `listener`: function called on state changes
+- **Returns**: function that unsubscribes the listener
+
+##### cancel
+
+```ts
+cancel(): void
+```
+
+Cancels all calls that are waiting to be executed (queued, debouncing, etc.).\
+Canceled calls are settled according to `cancelPolicy`. Functions that are already executing are not interrupted.
+
 ---
 
 ### Controller-Specific Options

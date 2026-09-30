@@ -2,6 +2,7 @@ import type { SyncLooseFunction } from '@niche-works/types';
 import type {
   MethodKeys,
   MethodType,
+  Pending,
   WrappedFunction,
   WrappedReturn,
 } from '../_types';
@@ -56,6 +57,16 @@ export default abstract class ExecutionControllerBase<
    */
   private _executing = 0;
 
+  /**
+   * 実行状態の変更を購読しているリスナー
+   */
+  private _listeners = new Set<() => void>();
+
+  /**
+   * 実行を待機している呼び出しのキャンセル処理
+   */
+  private _pendings = new Set<() => void>();
+
   constructor(options: ExecutionControllerBaseOptions<T, P>) {
     this._type = options.type;
     this._id = options.id;
@@ -91,10 +102,43 @@ export default abstract class ExecutionControllerBase<
   }
 
   /**
+   * 実行状態（executing, isExecuting）の変更を購読する
+   *
+   * @param listener 実行状態が変わった際に呼ばれる関数
+   * @returns 購読を解除する関数
+   */
+  subscribe(listener: () => void): () => void {
+    this._listeners.add(listener);
+    return () => {
+      this._listeners.delete(listener);
+    };
+  }
+
+  /**
+   * 実行を待機している呼び出しを全てキャンセルする
+   *
+   * キャンセルされた呼び出しはcancelPolicyに従って解決される。
+   * 既に実行中の関数は中断されない。
+   */
+  cancel(): void {
+    const pendings = [...this._pendings];
+    this._pendings.clear();
+    pendings.forEach((cancel) => cancel());
+  }
+
+  /**
+   * 実行状態の変更をリスナーに通知する
+   */
+  private _notify() {
+    this._listeners.forEach((listener) => listener());
+  }
+
+  /**
    * 実行の開始
    */
   protected _start() {
     this._executing++;
+    this._notify();
   }
 
   /**
@@ -102,6 +146,47 @@ export default abstract class ExecutionControllerBase<
    */
   protected _finish() {
     this._executing--;
+    this._notify();
+  }
+
+  /**
+   * 実行を待機する呼び出しを作成する共通処理
+   *
+   * `run` を呼ぶまで関数は実行されない。
+   * それまでに `cancel` された場合、`promise` はCANCELで解決され、`run` を呼んでも実行されない。
+   *
+   * @param execute `_createExecutionFn` で作成した関数
+   * @param scope スコープ
+   * @param args 引数
+   * @returns
+   */
+  protected _createPending<T extends SyncLooseFunction>(
+    execute: (scope: unknown, args: unknown[]) => Promise<unknown>,
+    scope: unknown,
+    args: Parameters<T>,
+  ): Pending<T> {
+    let resolve!: (value: unknown) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<unknown>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    }) as WrappedReturn<T>;
+
+    const cancel = () => {
+      this._pendings.delete(cancel);
+      resolve(CANCEL);
+    };
+    this._pendings.add(cancel);
+
+    const run = async () => {
+      // キャンセル済みであれば実行しない
+      if (!this._pendings.delete(cancel)) {
+        return;
+      }
+      await execute(scope, args).then(resolve, reject);
+    };
+
+    return { promise, run, cancel };
   }
 
   /**
@@ -132,7 +217,7 @@ export default abstract class ExecutionControllerBase<
    * @param scope 固定するスコープ。nullの場合は呼び出し時点のthisを使用する
    * @returns
    */
-  private _applyPolicy<T extends SyncLooseFunction>(
+  private _applyCancelPolicy<T extends SyncLooseFunction>(
     wrapedFn: WrappedFunction<T>,
     scope?: unknown | null,
   ): ControlledFunction<T, P> {
@@ -165,7 +250,7 @@ export default abstract class ExecutionControllerBase<
       return undefined;
     }
 
-    return this._applyPolicy(this._wrap(fn));
+    return this._applyCancelPolicy(this._wrap(fn));
   }
 
   /**
@@ -188,7 +273,7 @@ export default abstract class ExecutionControllerBase<
     }
 
     // scopeをinstanceに固定することで、メソッドのthisが失われない
-    return this._applyPolicy(
+    return this._applyCancelPolicy(
       this._wrap(fn as SyncLooseFunction),
       instance,
     ) as ControlledFunction<MethodType<I, K>, P>;

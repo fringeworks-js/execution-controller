@@ -151,37 +151,68 @@ describe('DebounceController', () => {
 
       // 1回目：デバウンス10ms + 実行50ms
       wrapped!();
-      vi.advanceTimersByTime(10);
-      await vi.runAllTicks();
-      await vi.runAllTicks();
+      await vi.advanceTimersByTimeAsync(10);
       expect(executingCount).toBe(1);
 
       // 1回目が実行中(現在時刻10ms)に、2回目を仕込む
-      vi.advanceTimersByTime(20); // 時刻30ms
+      await vi.advanceTimersByTimeAsync(20); // 時刻30ms
       wrapped!();
-      vi.advanceTimersByTime(10); // 時刻40ms (2回目のデバウンス終了)
-      await vi.runAllTicks();
-      await vi.runAllTicks();
+      await vi.advanceTimersByTimeAsync(10); // 時刻40ms (2回目のデバウンス終了)
 
       // sequential: true なので、1回目が終わるまで2回目は開始されない
       expect(executingCount).toBe(1);
 
       // 1回目が終わる時間（10ms + 50ms = 60ms）まで進める
-      vi.advanceTimersByTime(20); // 時刻60ms
-
-      // ここで1回目の終了と2回目の開始を促すためにマイクロタスクを複数回回す
-      await vi.runAllTicks(); // 1回目のPromise解決
-      await vi.runAllTicks(); // 2回目のPromiseチェーンの開始
-      await vi.runAllTicks(); // executeの内部処理
+      await vi.advanceTimersByTimeAsync(20); // 時刻60ms
 
       // 1回目が終わり、2回目が始まっているはず
       expect(executingCount).toBe(1);
 
       // 全て完了（2回目の50msが終わるまで）
-      vi.advanceTimersByTime(50);
-      await vi.runAllTicks();
-      await vi.runAllTicks();
+      await vi.advanceTimersByTimeAsync(50);
       expect(executingCount).toBe(0);
+    });
+  });
+
+  describe('cancel', () => {
+    it('待機中の呼び出しはキャンセルされ、実行されないこと', async () => {
+      const controller = new DebounceController({
+        id: 'test',
+        wait: 100,
+        cancelPolicy: 'resolve',
+      });
+
+      const fn = vi.fn().mockResolvedValue('ok');
+      const wrapped = controller.wrap(fn);
+
+      const promise = wrapped!();
+      controller.cancel();
+      expect(await promise).toBe(CANCEL);
+
+      vi.advanceTimersByTime(200);
+      await vi.runAllTicks();
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it('sequential: 前回の完了を待っている呼び出しもキャンセルされること', async () => {
+      const controller = new DebounceController({
+        id: 'test',
+        wait: 100,
+        sequential: true,
+        cancelPolicy: 'resolve',
+      });
+
+      const fn = vi.fn().mockResolvedValue('ok');
+      const wrapped = controller.wrap(fn);
+
+      const promise = wrapped!();
+      // タイマーは発火したが、_tail の解決を待っている状態
+      vi.advanceTimersByTime(100);
+      controller.cancel();
+
+      expect(await promise).toBe(CANCEL);
+      await vi.runAllTicks();
+      expect(fn).not.toHaveBeenCalled();
     });
   });
 });

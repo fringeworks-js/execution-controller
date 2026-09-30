@@ -1,3 +1,4 @@
+import { CANCEL } from '../constants';
 import SerialController from '../SerialController';
 
 describe('SerialController', () => {
@@ -103,5 +104,37 @@ describe('SerialController', () => {
     expect(r2).toBe(2);
     expect(r3).toBe(3);
     expect(counter.count).toBe(3);
+  });
+
+  describe('cancel', () => {
+    it('待機中の呼び出しはキャンセルされ、実行中の関数は完了すること', async () => {
+      const controller = new SerialController({
+        id: 'test',
+        cancelPolicy: 'resolve',
+      });
+
+      let resolveFirst: (value: number) => void;
+      const fn = vi.fn((n: number) =>
+        n === 1
+          ? new Promise<number>((resolve) => (resolveFirst = resolve))
+          : Promise.resolve(n),
+      );
+      const wrapped = controller.wrap(fn);
+
+      const p1 = wrapped!(1);
+      const p2 = wrapped!(2);
+      const p3 = wrapped!(3);
+
+      controller.cancel();
+      expect(await p2).toBe(CANCEL);
+      expect(await p3).toBe(CANCEL);
+
+      resolveFirst!(1);
+      expect(await p1).toBe(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // キャンセル後の呼び出しは通常通り実行される
+      expect(await wrapped!(4)).toBe(4);
+    });
   });
 });

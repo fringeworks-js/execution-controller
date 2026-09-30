@@ -140,4 +140,41 @@ describe('ExecutionControllerBase', () => {
       expect(result).toBe(CANCEL);
     });
   });
+
+  describe('subscribe', () => {
+    it('実行の開始と終了でリスナーが呼ばれること', async () => {
+      const controller = new TestController({ type: 'test', id: 'test' });
+      const states: boolean[] = [];
+      controller.subscribe(() => states.push(controller.isExecuting));
+
+      let resolveFn: () => void;
+      const wrapped = controller.wrap(
+        () => new Promise<void>((resolve) => (resolveFn = resolve)),
+      );
+
+      const execution = wrapped!();
+      expect(states).toEqual([true]);
+
+      resolveFn!();
+      await execution;
+      expect(states).toEqual([true, false]);
+    });
+
+    it('解除したリスナーは呼ばれないこと', async () => {
+      const controller = new TestController({ type: 'test', id: 'test' });
+      const listener = vi.fn();
+      const unsubscribe = controller.subscribe(listener);
+      unsubscribe();
+
+      await controller.wrap(async () => 'ok')!();
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancel', () => {
+    it('待機中の呼び出しがなければ何もしないこと', async () => {
+      const controller = new TestController({ type: 'test', id: 'test' });
+      expect(() => controller.cancel()).not.toThrow();
+    });
+  });
 });

@@ -28,7 +28,7 @@ export default class ThrottleController<
   /**
    * 実行中のPromise（sequential用）
    */
-  private _tail: Promise<any> = Promise.resolve();
+  private _tail: Promise<void> = Promise.resolve();
 
   constructor(options: ThrottleControllerOptions) {
     const { wait, sequential, ...rest } = options;
@@ -58,21 +58,17 @@ export default class ThrottleController<
         me._isThrottling = false;
       }, me._wait);
 
-      return new Promise((resolve, reject) => {
-        if (me._sequential) {
-          // 前の実行が終わるのを待って実行
-          me._tail = me._tail
-            .then(() => {
-              execute(scope, args).then(resolve).catch(reject);
-            })
-            .catch(() => {
-              /* 前のエラーを無視して次へ */
-            });
-        } else {
-          // 即時実行
-          execute(scope, args).then(resolve).catch(reject);
-        }
-      });
+      const { promise, run } = me._createPending(execute, scope, args);
+      if (me._sequential) {
+        // 前の実行が終わるのを待って実行
+        // runはrejectされないため、前の実行がエラーでも次へ進む
+        me._tail = me._tail.then(run);
+      } else {
+        // 即時実行
+        run();
+      }
+
+      return promise;
     };
   }
 }

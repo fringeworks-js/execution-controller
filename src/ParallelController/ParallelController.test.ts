@@ -1,3 +1,4 @@
+import { CANCEL } from '../constants';
 import ParallelController from '../ParallelController';
 
 describe('ParallelController', () => {
@@ -136,5 +137,36 @@ describe('ParallelController', () => {
     const result = await wrapped('World');
 
     expect(result).toBe('Hello World');
+  });
+
+  describe('cancel', () => {
+    it('キュー待ちの呼び出しはキャンセルされ、実行中の関数は完了すること', async () => {
+      const controller = new ParallelController({
+        id: 'test',
+        limit: 1,
+        cancelPolicy: 'resolve',
+      });
+
+      let resolveFirst: (value: number) => void;
+      const fn = vi.fn((n: number) =>
+        n === 1
+          ? new Promise<number>((resolve) => (resolveFirst = resolve))
+          : Promise.resolve(n),
+      );
+      const wrapped = controller.wrap(fn);
+
+      const p1 = wrapped!(1);
+      const p2 = wrapped!(2);
+
+      controller.cancel();
+      expect(await p2).toBe(CANCEL);
+
+      resolveFirst!(1);
+      expect(await p1).toBe(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // キャンセル後の呼び出しは通常通り実行される
+      expect(await wrapped!(3)).toBe(3);
+    });
   });
 });

@@ -127,6 +127,27 @@ wrapMethod<I, K>(instance: I, method: K): ControlledFunction<...>
   - `method`: メソッド名の文字列
 - 戻り値: 制御ロジックが追加された新しい関数（this は instance に固定されます）
 
+##### subscribe
+
+```ts
+subscribe(listener: () => void): () => void
+```
+
+実行状態（`executing` / `isExecuting`）の変更を購読します。\
+関数の実行が開始・終了するたびに listener が呼ばれます。
+
+- 引数: `listener`: 実行状態が変わった際に呼ばれる関数
+- 戻り値: 購読を解除する関数
+
+##### cancel
+
+```ts
+cancel(): void
+```
+
+実行を待機している呼び出し（キュー待ち、デバウンス待ちなど）を全てキャンセルします。\
+キャンセルされた呼び出しは `cancelPolicy` に従って解決されます。既に実行中の関数は中断されません。
+
 ### コントローラー固有
 
 #### CapacityController

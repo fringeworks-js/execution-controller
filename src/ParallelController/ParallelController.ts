@@ -22,13 +22,7 @@ export default class ParallelController<
   /**
    * 実行待ちのタスクキュー
    */
-  private _queue: Array<{
-    execute: (scope: any, args: any[]) => Promise<any>;
-    scope: any;
-    args: any[];
-    resolve: (value: any) => void;
-    reject: (reason?: any) => void;
-  }> = [];
+  private _queue: Array<() => Promise<void>> = [];
 
   constructor(options: ParallelControllerOptions) {
     // @ts-ignore
@@ -45,20 +39,23 @@ export default class ParallelController<
     const execute = me._createExecutionFn(fn);
 
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
-      return new Promise((resolve, reject) => {
-        // タスクをキューに追加
-        me._queue.push({
-          execute,
-          scope,
-          args,
-          resolve,
-          reject,
-        });
+      // タスクをキューに追加
+      const { promise, run } = me._createPending(execute, scope, args);
+      me._queue.push(run);
 
-        // キューの消化を試みる
-        me._process();
-      });
+      // キューの消化を試みる
+      me._process();
+
+      return promise;
     };
+  }
+
+  /**
+   * 実行を待機している呼び出しを全てキャンセルする
+   */
+  cancel(): void {
+    this._queue = [];
+    super.cancel();
   }
 
   /**
@@ -71,16 +68,13 @@ export default class ParallelController<
     }
 
     // キューから先頭を取り出す
-    const { execute, scope, args, resolve, reject } = this._queue.shift();
+    const run = this._queue.shift()!;
 
     // 実行開始（非同期）
-    execute(scope, args)
-      .then(resolve)
-      .catch(reject)
-      .finally(() => {
-        // 完了したら次のタスクをチェック
-        this._process();
-      });
+    run().finally(() => {
+      // 完了したら次のタスクをチェック
+      this._process();
+    });
 
     // 再帰的に次のタスクも開始させる
     this._process();
