@@ -12,12 +12,15 @@ import { CANCEL } from './constants';
 export type CancelPolicy = 'ignore' | 'resolve' | 'reject';
 
 /**
- * 実行をコントロールされた関数の戻り値
+ * 実行をコントロールされた関数の戻り値\
+ * 対象の関数がPromiseを返す場合は、その解決値となる
  */
 export type ControlledReturn<
   F extends SyncLooseFunction,
   P extends CancelPolicy,
-> = P extends 'resolve' ? ReturnType<F> | typeof CANCEL : ReturnType<F>;
+> = P extends 'resolve'
+  ? Awaited<ReturnType<F>> | typeof CANCEL
+  : Awaited<ReturnType<F>>;
 
 /**
  * 実行をコントロールされた関数

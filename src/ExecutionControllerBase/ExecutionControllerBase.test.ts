@@ -1,7 +1,7 @@
 import type { SyncLooseFunction } from '@niche-works/types';
+import type { WrappedFunction } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import type { WrappedFunction } from '../types';
 
 // テスト用の具体的な実装クラス
 class TestController<

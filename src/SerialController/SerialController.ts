@@ -19,7 +19,7 @@ export default class SerialController<
    */
   private _tail: Promise<void> = Promise.resolve();
 
-  constructor(options: SerialControllerOptions) {
+  constructor(options: SerialControllerOptions<P>) {
     // @ts-ignore
     super({ ...options, type: SerialControllerType });
   }

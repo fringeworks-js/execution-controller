@@ -1,4 +1,5 @@
 export { default as CapacityController } from './CapacityController';
+export { CANCEL } from './constants';
 export { default as DebounceController } from './DebounceController';
 export { default as ExclusiveController } from './ExclusiveController';
 export { default as ExecutionControllerBase } from './ExecutionControllerBase';

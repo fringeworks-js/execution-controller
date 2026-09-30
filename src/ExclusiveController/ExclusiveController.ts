@@ -14,7 +14,7 @@ import type { ExclusiveControllerOptions } from './types';
 export default class ExclusiveController<
   P extends CancelPolicy = 'ignore',
 > extends ExecutionControllerBase<ExclusiveControllerType, P> {
-  constructor(options: ExclusiveControllerOptions) {
+  constructor(options: ExclusiveControllerOptions<P>) {
     // @ts-ignore
     super({ ...options, type: ExclusiveControllerType });
   }

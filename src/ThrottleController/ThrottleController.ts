@@ -30,7 +30,7 @@ export default class ThrottleController<
    */
   private _tail: Promise<void> = Promise.resolve();
 
-  constructor(options: ThrottleControllerOptions) {
+  constructor(options: ThrottleControllerOptions<P>) {
     const { wait, sequential, ...rest } = options;
     // @ts-ignore
     super({ ...rest, type: ThrottleControllerType });

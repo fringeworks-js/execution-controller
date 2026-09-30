@@ -24,7 +24,7 @@ export default class ParallelController<
    */
   private _queue: Array<() => Promise<void>> = [];
 
-  constructor(options: ParallelControllerOptions) {
+  constructor(options: ParallelControllerOptions<P>) {
     // @ts-ignore
     super({ ...options, type: ParallelControllerType });
     // デフォルトは4

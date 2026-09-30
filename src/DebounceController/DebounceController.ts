@@ -32,7 +32,7 @@ export default class DebounceController<
    */
   private _tail: Promise<void> = Promise.resolve();
 
-  constructor(options: DebounceControllerOptions) {
+  constructor(options: DebounceControllerOptions<P>) {
     const { wait, sequential, ...rest } = options;
     // @ts-ignore
     super({ ...rest, type: DebounceControllerType });

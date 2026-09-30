@@ -26,12 +26,12 @@ describe('ThrottleController', () => {
 
     // クールタイム中の2回目
     vi.advanceTimersByTime(50);
-    const p2 = wrapped!();
+    wrapped!();
     expect(fn).toHaveBeenCalledTimes(1); // 増えていないこと
 
     // クールタイム明けの3回目
     vi.advanceTimersByTime(200);
-    const p3 = wrapped!();
+    wrapped!();
     await vi.runAllTicks();
     expect(fn).toHaveBeenCalledTimes(2);
 
@@ -61,7 +61,7 @@ describe('ThrottleController', () => {
 
     // クールタイム明けの3回目
     vi.advanceTimersByTime(51);
-    const p3 = wrapped!();
+    wrapped!();
     await vi.runAllTicks();
     expect(fn).toHaveBeenCalledTimes(2);
 
