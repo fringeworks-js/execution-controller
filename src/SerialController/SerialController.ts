@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@niche-works/types';
+import type { SyncLooseFunction } from '@fringeworks/types';
 import ExecutionControllerBase from '../ExecutionControllerBase';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import type { CancelPolicy } from '../types';

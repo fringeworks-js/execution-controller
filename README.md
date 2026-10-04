@@ -1,6 +1,6 @@
-# @niche-works/execution-controller
+# @fringeworks/execution-controller
 
-`@niche-works/execution-controller` is a niche library for advanced control over function execution timing and concurrency.  
+`@fringeworks/execution-controller` is a niche library for advanced control over function execution timing and concurrency.  
 It provides common execution control patterns—such as Debounce, Throttle, Serial, Parallel, and Exclusive—through a unified interface suitable for real-world development.
 
 **[日本語版 README はこちら](./README.ja.md)**
@@ -18,7 +18,7 @@ It provides common execution control patterns—such as Debounce, Throttle, Seri
 ## Installation
 
 ```sh
-npm install @niche-works/execution-controller
+npm install @fringeworks/execution-controller
 ```
 
 ## Controllers
@@ -37,7 +37,7 @@ npm install @niche-works/execution-controller
 ### Wrapping a Function
 
 ```ts
-import { CapacityController } from '@niche-works/execution-controller';
+import { CapacityController } from '@fringeworks/execution-controller';
 
 const controller = new CapacityController({
   id: 'api-limit',
@@ -60,7 +60,7 @@ const result3 = await fetchData(3); // returns CANCEL due to limit
 You can wrap class methods while preserving the `this` context.
 
 ```ts
-import { DebounceController } from '@niche-works/execution-controller';
+import { DebounceController } from '@fringeworks/execution-controller';
 
 class SearchComponent {
   private controller = new DebounceController({
@@ -80,7 +80,7 @@ class SearchComponent {
 
 ## API
 
-Detailed reference for classes and interfaces provided by `@niche-works/execution-controller`.
+Detailed reference for classes and interfaces provided by `@fringeworks/execution-controller`.
 
 ### Common to All Controllers
 

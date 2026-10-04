@@ -1,6 +1,6 @@
-# @niche-works/execution-controller
+# @fringeworks/execution-controller
 
-`@niche-works/execution-controller` は関数の実行タイミングや同時実行数を高度に制御するためのニッチなライブラリです。\
+`@fringeworks/execution-controller` は関数の実行タイミングや同時実行数を高度に制御するためのニッチなライブラリです。\
 Debounce, Throttle, Serial, Parallel, Exclusive など、\
 実際の開発現場で頻出する実行制御パターンを統一されたインターフェースで提供します。
 
@@ -16,7 +16,7 @@ Debounce, Throttle, Serial, Parallel, Exclusive など、\
 ## インストール
 
 ```sh
-npm install @niche-works/execution-controller
+npm install @fringeworks/execution-controller
 ```
 
 ## コントローラー一覧
@@ -35,7 +35,7 @@ npm install @niche-works/execution-controller
 ### 基本的な関数のラップ
 
 ```ts
-import { CapacityController } from '@niche-works/execution-controller';
+import { CapacityController } from '@fringeworks/execution-controller';
 
 const controller = new CapacityController({
   id: 'api-limit',
@@ -58,7 +58,7 @@ const result3 = await fetchData(3); // 実行枠がいっぱいなので CANCEL 
 クラスのメソッドに対して this のコンテキストを維持したままラップできます。
 
 ```ts
-import { DebounceController } from '@niche-works/execution-controller';
+import { DebounceController } from '@fringeworks/execution-controller';
 
 class SearchComponent {
   private controller = new DebounceController({
@@ -79,7 +79,7 @@ class SearchComponent {
 
 ## API
 
-@niche-works/execution-controller が提供する各クラスおよびインターフェースの詳細リファレンスです。
+@fringeworks/execution-controller が提供する各クラスおよびインターフェースの詳細リファレンスです。
 
 ### 全コントローラー共通
 

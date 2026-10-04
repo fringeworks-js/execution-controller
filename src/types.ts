@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@niche-works/types';
+import type { SyncLooseFunction } from '@fringeworks/types';
 import type { MethodKeys, MethodType } from './_types';
 import { CANCEL } from './constants';
 
