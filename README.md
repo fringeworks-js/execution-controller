@@ -95,12 +95,12 @@ All controllers extend `ExecutionControllerBase` and share the following:
 
 #### Properties (Read-only)
 
-| Property      | Type      | Description                                  |
-| ------------- | --------- | -------------------------------------------- |
-| `type`        | `string`  | Controller type                              |
-| `id`          | `string`  | Controller ID                                |
-| `executing`   | `number`  | Number of currently executing functions      |
-| `isExecuting` | `boolean` | `true` if at least one function is executing |
+| Property      | Type                  | Description                                  |
+| ------------- | --------------------- | -------------------------------------------- |
+| `type`        | `string`              | Controller type                              |
+| `id`          | `string \| undefined` | Controller ID                                |
+| `executing`   | `number`              | Number of currently executing functions      |
+| `isExecuting` | `boolean`             | `true` if at least one function is executing |
 
 #### Methods
 

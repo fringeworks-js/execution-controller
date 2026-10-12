@@ -73,7 +73,7 @@ export default class DebounceController<
   /**
    * 実行を待機している呼び出しを全てキャンセルする
    */
-  cancel(): void {
+  override cancel(): void {
     this._clearWaiting();
     super.cancel();
   }

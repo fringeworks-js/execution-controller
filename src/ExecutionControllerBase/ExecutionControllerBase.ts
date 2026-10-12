@@ -45,7 +45,7 @@ export default abstract class ExecutionControllerBase<
   /**
    * ID
    */
-  private _id: string;
+  private _id: string | undefined;
 
   /**
    * キャンセル時の動作
@@ -67,7 +67,7 @@ export default abstract class ExecutionControllerBase<
    */
   private _pendings = new Set<() => void>();
 
-  constructor(options: ExecutionControllerBaseOptions<T, P>) {
+  constructor(options: ExecutionControllerBaseOptions<T, P> & { type: T }) {
     this._type = options.type;
     this._id = options.id;
     this._cancelPolicy = options.cancelPolicy || 'ignore';
@@ -83,7 +83,7 @@ export default abstract class ExecutionControllerBase<
   /**
    * ID
    */
-  get id(): string {
+  get id(): string | undefined {
     return this._id;
   }
 

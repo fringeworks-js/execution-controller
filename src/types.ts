@@ -42,7 +42,7 @@ export interface ExecutionController<T extends string, P extends CancelPolicy> {
   /**
    * ID
    */
-  get id(): string;
+  get id(): string | undefined;
 
   /**
    * 実行中の件数
