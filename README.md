@@ -1,6 +1,6 @@
 # @fringeworks/execution-controller
 
-`@fringeworks/execution-controller` is a niche library for advanced control over function execution timing and concurrency.  
+`@fringeworks/execution-controller` is a library some will find handy, for advanced control over function execution timing and concurrency.  
 It provides common execution control patterns—such as Debounce, Throttle, Serial, Parallel, and Exclusive—through a unified interface suitable for real-world development.
 
 **[日本語版 README はこちら](./README.ja.md)**

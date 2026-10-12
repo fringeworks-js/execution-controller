@@ -1,10 +1,6 @@
-import indexes from '@fringeworks/dev/indexes';
-import {
-  CONSTANTS,
-  PRIVATE,
-  TEST_FILE,
-} from '@fringeworks/dev/indexes/constants';
+import { CONSTANTS, PRIVATE, TEST_FILE } from '@fringeworks/dev/constants';
+import generateIndexFiles from '@fringeworks/dev/generateIndexFiles';
 
-indexes({
+generateIndexFiles({
   exclude: [CONSTANTS, PRIVATE, TEST_FILE],
 });

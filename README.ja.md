@@ -1,6 +1,6 @@
 # @fringeworks/execution-controller
 
-`@fringeworks/execution-controller` は関数の実行タイミングや同時実行数を高度に制御するためのニッチなライブラリです。\
+`@fringeworks/execution-controller` は関数の実行タイミングや同時実行数を高度に制御するための、誰かにとっては便利なライブラリです。\
 Debounce, Throttle, Serial, Parallel, Exclusive など、\
 実際の開発現場で頻出する実行制御パターンを統一されたインターフェースで提供します。
 
