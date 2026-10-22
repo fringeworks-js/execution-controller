@@ -18,6 +18,6 @@ export type ControllerType =
   (typeof ControllerType)[keyof typeof ControllerType];
 
 /**
- * キャンセル時に返す戻り値
+ * キャンセル時に返す戻り値 * パッケージが複数のバージョンで読み込まれても一致するよう、グローバルのシンボルにする
  */
-export const CANCEL = Symbol('cancel');
+export const CANCEL = Symbol.for('@fringeworks/execution-controller/cancel');

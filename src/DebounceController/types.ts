@@ -18,4 +18,17 @@ export type DebounceControllerOptions<P extends CancelPolicy = 'ignore'> =
      * @default false
      */
     sequential?: boolean;
+
+    /**
+     * 実行するタイミング
+     *
+     * - 'end': 呼び出しが待機時間途切れたときに、最後の呼び出しを実行する
+     * - 'start': 呼び出しが途切れた後の最初の呼び出しをすぐに実行する
+     * - 'both': 'start' と 'end' の両方（最初の呼び出しだけの場合は1回だけ実行する）
+     *
+     * 実行されなかった呼び出しはキャンセルされる
+     *
+     * @default 'end'
+     */
+    triggerAt?: 'end' | 'start' | 'both';
   };

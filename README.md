@@ -1,19 +1,16 @@
 # @fringeworks/execution-controller
 
-`@fringeworks/execution-controller` is a library some will find handy, for advanced control over function execution timing and concurrency.  
+`@fringeworks/execution-controller` is a library some will find handy, for advanced control over function execution timing and concurrency.\
 It provides common execution control patterns—such as Debounce, Throttle, Serial, Parallel, and Exclusive—through a unified interface suitable for real-world development.
 
-**[日本語版 README はこちら](./README.ja.md)**
+**[日本語のREADMEはこちら](./README.ja.md)**
 
 ## Features
 
 - **Unified API**: All controllers provide `wrap` and `wrapMethod`, allowing you to easily extend existing functions.
-- **Flexible cancellation policies**: Choose behavior when execution limits are exceeded:
-  - `ignore` (never resolves)
-  - `reject` (throws an error)
-  - `resolve` (returns a `CANCEL` value)
+- **Flexible cancellation policies**: Choose how calls that are not executed are settled: `ignore` (never resolves), `reject` (throws `CANCEL`), or `resolve` (returns `CANCEL`).
 - **TypeScript native**: Full type definitions ensure that argument and return types are preserved after wrapping.
-- **Stateful**: You can inspect the current number of running executions (`executing`) and whether anything is running (`isExecuting`) in real time.
+- **Stateful**: You can inspect and subscribe to the current number of running executions (`executing`) and whether anything is running (`isExecuting`).
 
 ## Installation
 
@@ -23,14 +20,14 @@ npm install @fringeworks/execution-controller
 
 ## Controllers
 
-| Controller          | Description                             | Common Use Cases                           |
-| ------------------- | --------------------------------------- | ------------------------------------------ |
-| CapacityController  | Discards calls exceeding a limit        | Limiting concurrent requests, load control |
-| ExclusiveController | Discards all calls while executing      | Preventing duplicate submissions, modals   |
-| SerialController    | Executes calls one by one in order      | Ordered saves, animations                  |
-| ParallelController  | Executes with concurrency limit + queue | Controlled parallel uploads                |
-| DebounceController  | Executes after inactivity delay         | Autocomplete, resize optimization          |
-| ThrottleController  | Blocks execution for a fixed interval   | Scroll handling, click throttling          |
+| Controller            | Description                                        | Common Use Cases                                         |
+| --------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| `CapacityController`  | Discards calls exceeding a limit                   | Limiting concurrent requests, load control               |
+| `ExclusiveController` | Discards all calls while executing                 | Preventing duplicate submissions, modals                 |
+| `SerialController`    | Executes calls one by one in order                 | Ordered saves, animations                                |
+| `ParallelController`  | Executes with concurrency limit + queue            | Controlled parallel uploads                              |
+| `DebounceController`  | Executes after calls settle (or on the first call) | Autocomplete, resize optimization                        |
+| `ThrottleController`  | Executes at most once per interval                 | Scroll handling, click throttling (`triggerAt: 'start'`) |
 
 ## Usage
 
@@ -40,7 +37,6 @@ npm install @fringeworks/execution-controller
 import { CapacityController } from '@fringeworks/execution-controller';
 
 const controller = new CapacityController({
-  id: 'api-limit',
   limit: 2,
   cancelPolicy: 'resolve',
 });
@@ -49,10 +45,12 @@ const fetchData = controller.wrap(async (id: number) => {
   return await api.get(`/item/${id}`);
 });
 
-// Execution
-const result1 = await fetchData(1); // executed
-const result2 = await fetchData(2); // executed
-const result3 = await fetchData(3); // returns CANCEL due to limit
+// Call three times at once
+const [result1, result2, result3] = await Promise.all([
+  fetchData(1), // executed
+  fetchData(2), // executed
+  fetchData(3), // returns CANCEL because the limit is reached
+]);
 ```
 
 ### Wrapping an Instance Method
@@ -63,12 +61,10 @@ You can wrap class methods while preserving the `this` context.
 import { DebounceController } from '@fringeworks/execution-controller';
 
 class SearchComponent {
-  private controller = new DebounceController({
-    id: 'search',
-    wait: 300,
-  });
+  private controller = new DebounceController({ wait: 300 });
 
   constructor() {
+    // Wrap and redefine its own method
     this.handleInput = this.controller.wrapMethod(this, 'handleInput')!;
   }
 
@@ -78,142 +74,237 @@ class SearchComponent {
 }
 ```
 
-## API
+### Detecting Calls That Were Not Executed
 
-Detailed reference for classes and interfaces provided by `@fringeworks/execution-controller`.
+With `cancelPolicy: 'resolve'`, calls that are not executed resolve with `CANCEL`. Use `isCanceled` to check for it.
+
+```ts
+import {
+  DebounceController,
+  isCanceled,
+} from '@fringeworks/execution-controller';
+
+const controller = new DebounceController({ cancelPolicy: 'resolve' });
+const search = controller.wrap(async (query: string) => api.search(query));
+
+const result = await search('keyword');
+if (isCanceled(result)) {
+  // A later call took priority, so this call was not executed
+  return;
+}
+```
+
+### Controlling Multiple Functions Together
+
+Each controller holds its own execution state (running count, waiting calls, timers, and so on). Functions wrapped by the same controller are controlled as one group.
+
+```ts
+const controller = new ExclusiveController();
+
+const save = controller.wrap(saveDocument);
+const remove = controller.wrap(removeDocument);
+
+save(); // executed
+remove(); // discarded because save is executing
+```
+
+With `DebounceController`, a call to one function cancels the waiting call of another. To control functions independently, create a controller for each function.
+
+## API
 
 ### Common to All Controllers
 
-All controllers extend `ExecutionControllerBase` and share the following:
+All controllers extend `ExecutionControllerBase` and share the following properties and methods.
 
-#### Constructor Options
+| Property      | Type                  | Description                                             |
+| ------------- | --------------------- | ------------------------------------------------------- |
+| `type`        | `ControllerType`      | Controller type (`'capacity'`, `'debounce'`, and so on) |
+| `id`          | `string \| undefined` | ID passed to the constructor                            |
+| `executing`   | `number`              | Number of currently executing functions                 |
+| `isExecuting` | `boolean`             | `true` if at least one function is executing            |
 
-| Property        | Type                            | Description                                                 |
-| --------------- | ------------------------------- | ----------------------------------------------------------- |
-| `id?`           | `string`                        | Unique controller ID                                        |
-| `cancelPolicy?` | [`CancelPolicy`](#cancelpolicy) | Behavior when execution is restricted (default: `'ignore'`) |
+| Method                         | Description                                                       |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `wrap(fn)`                     | Wraps a function with the controller's execution control          |
+| `wrapMethod(instance, method)` | Wraps an instance method, keeping `this` bound to the instance    |
+| `subscribe(listener)`          | Subscribes to execution state changes and returns an unsubscriber |
+| `cancel()`                     | Cancels all calls that are waiting to be executed                 |
 
-#### Properties (Read-only)
+#### `constructor`
 
-| Property      | Type                  | Description                                  |
-| ------------- | --------------------- | -------------------------------------------- |
-| `type`        | `string`              | Controller type                              |
-| `id`          | `string \| undefined` | Controller ID                                |
-| `executing`   | `number`              | Number of currently executing functions      |
-| `isExecuting` | `boolean`             | `true` if at least one function is executing |
+Each controller's constructor takes the following common options plus controller-specific options. All options are optional.
 
-#### Methods
+| Option          | Type                            | Description                                                       |
+| --------------- | ------------------------------- | ----------------------------------------------------------------- |
+| `id?`           | `string`                        | Controller ID                                                     |
+| `cancelPolicy?` | [`CancelPolicy`](#cancelpolicy) | How calls that are not executed are settled (default: `'ignore'`) |
 
-##### wrap
-
-```ts
-wrap<F>(fn: F): ControlledFunction<F, P>
-```
-
-Wraps a function with controller logic.
-
-- **Argument**: `fn` — function to wrap
-- **Returns**: a new function with execution control applied
-
-##### wrapMethod
+#### `wrap`
 
 ```ts
-wrapMethod<I, K>(instance: I, method: K): ControlledFunction<...>
+wrap<F extends SyncLooseFunction>(fn: F): ControlledFunction<F, P>
+wrap<F extends SyncLooseFunction>(
+  fn: F | null | undefined,
+): ControlledFunction<F, P> | undefined
 ```
 
-Wraps an instance method while preserving its `this` context.
+Wraps a function with the controller's execution control. The wrapped function always returns a Promise.\
+Returns `undefined` if `fn` is `null` or `undefined`.
 
-- **Arguments**:
-  - `instance`: object instance containing the method
-  - `method`: method name (string)
+#### `wrapMethod`
 
-- **Returns**: wrapped function with `this` bound to the instance
+```ts
+wrapMethod<I extends object, K extends MethodKeys<I>>(
+  instance: I,
+  method: K,
+): ControlledFunction<MethodType<I, K>, P> | undefined
+```
 
-##### subscribe
+Wraps an instance method, keeping `this` bound to `instance`.\
+Returns `undefined` if `instance[method]` is not a function.
+
+| Parameter  | Type | Description                  |
+| ---------- | ---- | ---------------------------- |
+| `instance` | `I`  | Instance that has the method |
+| `method`   | `K`  | Method name                  |
+
+#### `subscribe`
 
 ```ts
 subscribe(listener: () => void): () => void
 ```
 
-Subscribes to changes in the execution state (`executing` / `isExecuting`).\
-The listener is called when a function starts or finishes executing.
+Subscribes to changes in the execution state (`executing` / `isExecuting`) and returns a function that unsubscribes.\
+`listener` is called whenever a function starts or finishes executing.
 
-- **Arguments**: `listener`: function called on state changes
-- **Returns**: function that unsubscribes the listener
+If `listener` throws, the execution and the result of the function are not affected. After all listeners are called, the error is rethrown asynchronously (multiple errors are combined into an `AggregateError`).
 
-##### cancel
+#### `cancel`
 
 ```ts
 cancel(): void
 ```
 
-Cancels all calls that are waiting to be executed (queued, debouncing, etc.).\
+Cancels all calls that are waiting to be executed (queued, debouncing, and so on).\
 Canceled calls are settled according to `cancelPolicy`. Functions that are already executing are not interrupted.
 
----
+### `CapacityController<P>`
 
-### Controller-Specific Options
+Immediately discards calls made while the number of concurrent executions is at the limit.
 
-#### CapacityController
+```ts
+new CapacityController<P extends CancelPolicy = 'ignore'>(
+  options?: CapacityControllerOptions<P>,
+)
+```
 
-Discards calls that exceed the execution limit.
+| Option   | Type     | Description                                                                                                                                    |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit?` | `number` | Max concurrent executions (default: `4`). Values below 1 and `NaN` fall back to the default, decimals are truncated, `Infinity` means no limit |
 
-| Property | Type     | Description                            |
-| -------- | -------- | -------------------------------------- |
-| `limit?` | `number` | Max concurrent executions (default: 4) |
+### `ExclusiveController<P>`
 
-#### ExclusiveController
+Discards all other calls while one is executing (equivalent to `CapacityController` with `limit: 1`). It has no specific options.
 
-Discards all other calls while one is executing (equivalent to `limit: 1`).
-_No additional options._
+```ts
+new ExclusiveController<P extends CancelPolicy = 'ignore'>(
+  options?: ExclusiveControllerOptions<P>,
+)
+```
 
-#### SerialController
+### `SerialController<P>`
 
-Queues all calls and executes them sequentially.
-_No additional options._
+Queues all calls and executes them one by one in the order they were called. It has no specific options.
 
-#### ParallelController
+```ts
+new SerialController<P extends CancelPolicy = 'ignore'>(
+  options?: SerialControllerOptions<P>,
+)
+```
 
-Executes up to a limit in parallel, queues the rest.
+### `ParallelController<P>`
 
-| Property | Type     | Description                            |
-| -------- | -------- | -------------------------------------- |
-| `limit?` | `number` | Max concurrent executions (default: 4) |
+Executes calls in parallel up to the limit, queues the rest, and executes them in call order as slots become available.
 
-#### DebounceController
+```ts
+new ParallelController<P extends CancelPolicy = 'ignore'>(
+  options?: ParallelControllerOptions<P>,
+)
+```
 
-Groups rapid calls and executes after a delay from the last call.
+| Option   | Type     | Description                                                                                                                                    |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit?` | `number` | Max concurrent executions (default: `4`). Values below 1 and `NaN` fall back to the default, decimals are truncated, `Infinity` means no limit |
 
-| Property      | Type      | Description                                                                           |
-| ------------- | --------- | ------------------------------------------------------------------------------------- |
-| `wait?`       | `number`  | Delay in ms (default: 240)                                                            |
-| `sequential?` | `boolean` | If true, waits for previous execution to finish before starting next (default: false) |
+### `DebounceController<P>`
 
-#### ThrottleController
+Groups calls until there are no calls for `wait` ms, and executes the first or last call depending on `triggerAt`. Calls that are not executed are canceled.
 
-Allows execution once, then blocks for a specified interval.
+```ts
+new DebounceController<P extends CancelPolicy = 'ignore'>(
+  options?: DebounceControllerOptions<P>,
+)
+```
 
-| Property      | Type      | Description                                                                         |
-| ------------- | --------- | ----------------------------------------------------------------------------------- |
-| `wait?`       | `number`  | Block duration in ms (default: 240)                                                 |
-| `sequential?` | `boolean` | If true, waits for previous execution to finish before re-enabling (default: false) |
+| Option        | Type                         | Description                                                                                                                                                           |
+| ------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wait?`       | `number`                     | Delay in ms (default: `240`)                                                                                                                                          |
+| `sequential?` | `boolean`                    | If `true`, waits for the previous execution to finish before starting the next (default: `false`)                                                                     |
+| `triggerAt?`  | `'end' \| 'start' \| 'both'` | When to execute. `'end'`: the last call after calls settle; `'start'`: the first call immediately; `'both'`: both (once if there is only one call) (default: `'end'`) |
 
----
+`cancel()` also ends the current group of calls. The next call is treated as the first call of a new group (it is executed immediately with `triggerAt: 'start'` / `'both'`).
 
-### Types & Constants
+### `ThrottleController<P>`
 
-#### CancelPolicy
+Executes at most once every `wait` ms. Calls during the interval are handled depending on `triggerAt`. Calls that are not executed are canceled.
 
-- `'ignore'`: Leaves the Promise pending (never resolves)
-- `'reject'`: Rejects the Promise with `CANCEL`
-- `'resolve'`: Resolves the Promise with `CANCEL`
+```ts
+new ThrottleController<P extends CancelPolicy = 'ignore'>(
+  options?: ThrottleControllerOptions<P>,
+)
+```
 
-#### CANCEL (Symbol / Constant)
+| Option        | Type                         | Description                                                                                                                                                                                                                                                    |
+| ------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wait?`       | `number`                     | Interval in ms (default: `240`)                                                                                                                                                                                                                                |
+| `sequential?` | `boolean`                    | If `true`, waits for the previous execution to finish before starting the next (default: `false`)                                                                                                                                                              |
+| `triggerAt?`  | `'both' \| 'start' \| 'end'` | When to execute. `'both'`: the first call immediately, and the last call during the interval at its end; `'start'`: the first call immediately, canceling calls during the interval; `'end'`: the last call `wait` ms after the first call (default: `'both'`) |
 
-Returned or thrown when execution is skipped or canceled:
+`cancel()` does not end the cooldown, to keep the interval between executions. The next call waits until the cooldown is over.
 
-- Returned when `cancelPolicy: 'resolve'`
-- Thrown when `cancelPolicy: 'reject'`
+### `isCanceled`
+
+```ts
+isCanceled(value: unknown): value is typeof CANCEL
+```
+
+Returns whether the value is `CANCEL` (the value of a call that was not executed).
+
+### Constants
+
+| Constant         | Description                                                                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CANCEL`         | Value of a call that was not executed. It is the return value with `cancelPolicy: 'resolve'` and the thrown value with `'reject'`. It is the same value even if multiple versions of the package are loaded |
+| `ControllerType` | List of controller types (`ControllerType.debounce` and so on). The type of the same name is the union of the types                                                                                         |
+
+### Types
+
+| Type                                    | Description                                                                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CancelPolicy`                          | How calls that are not executed are settled. See below                                                                                        |
+| `ControlledFunction<F, P>`              | Function returned by `wrap` / `wrapMethod`. Takes the same arguments as `F` and returns a Promise of `ControlledReturn<F, P>`                 |
+| `ControlledReturn<F, P>`                | Resolved value of a wrapped function: the return value of `F` (awaited if it is a Promise), including `typeof CANCEL` when `P` is `'resolve'` |
+| `ExecutionController<T, P>`             | Interface common to all controllers                                                                                                           |
+| `ExecutionControllerBaseOptionsBase<P>` | Options common to all controllers                                                                                                             |
+| `CapacityControllerOptions<P>` etc.     | Options of each controller                                                                                                                    |
+
+#### `CancelPolicy`
+
+| Value       | Description                                                       |
+| ----------- | ----------------------------------------------------------------- |
+| `'ignore'`  | Leaves the Promise pending, so the caller keeps waiting (default) |
+| `'reject'`  | Rejects the Promise with `CANCEL`                                 |
+| `'resolve'` | Resolves the Promise with `CANCEL`                                |
 
 ## License
 

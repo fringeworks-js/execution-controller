@@ -14,17 +14,17 @@ import type { ExclusiveControllerOptions } from './types';
 export default class ExclusiveController<
   P extends CancelPolicy = 'ignore',
 > extends ExecutionControllerBase<ExclusiveControllerType, P> {
-  constructor(options: ExclusiveControllerOptions<P>) {
-    // @ts-ignore
+  constructor(options: ExclusiveControllerOptions<P> = {}) {
     super({ ...options, type: ExclusiveControllerType });
   }
 
-  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
-    const me = this;
-    const execute = me._createExecutionFn(fn);
+  protected override _wrap<T extends SyncLooseFunction>(
+    fn: T,
+  ): WrappedFunction<T> {
+    const execute = this._createExecutionFn(fn);
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       // 実行しているものがあるかチェック
-      if (me.isExecuting) {
+      if (this.isExecuting) {
         // あったらキャンセル
         return Promise.resolve(CANCEL);
       }

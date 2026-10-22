@@ -1,4 +1,5 @@
 import type { SyncLooseFunction } from '@fringeworks/types';
+import { normalizeLimit } from '../_internal/limit';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -19,24 +20,24 @@ export default class CapacityController<
    */
   private _limit: number;
 
-  constructor(options: CapacityControllerOptions<P>) {
-    // @ts-ignore
-    super({ ...options, type: CapacityControllerType });
-    // デフォルトは 4 枠
-    this._limit = options.limit ?? 4;
+  constructor(options: CapacityControllerOptions<P> = {}) {
+    const { limit, ...rest } = options;
+    super({ ...rest, type: CapacityControllerType });
+    this._limit = normalizeLimit(limit);
   }
 
   /**
    * 関数をラップする
-   * 実行枠がいっぱいの場合は undefined を返して即終了する
+   * 実行枠がいっぱいの場合は CANCEL で解決して即終了する
    */
-  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
-    const me = this;
-    const execute = me._createExecutionFn(fn);
+  protected override _wrap<T extends SyncLooseFunction>(
+    fn: T,
+  ): WrappedFunction<T> {
+    const execute = this._createExecutionFn(fn);
 
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       // 現在の実行数が上限に達しているかチェック
-      if (me.executing >= me._limit) {
+      if (this.executing >= this._limit) {
         // 実行せずに終了
         return Promise.resolve(CANCEL);
       }

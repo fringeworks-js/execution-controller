@@ -18,4 +18,17 @@ export type ThrottleControllerOptions<P extends CancelPolicy = 'ignore'> =
      * @default false
      */
     sequential?: boolean;
+
+    /**
+     * 実行するタイミング
+     *
+     * - 'both': 最初の呼び出しですぐに実行し、待機中の呼び出しは最後のものを待機時間の終わりに実行する
+     * - 'start': 最初の呼び出しですぐに実行し、待機中の呼び出しはキャンセルする
+     * - 'end': 最初の呼び出しから待機時間が経過したときに、最後の呼び出しを実行する
+     *
+     * 実行されなかった呼び出しはキャンセルされる
+     *
+     * @default 'both'
+     */
+    triggerAt?: 'both' | 'start' | 'end';
   };

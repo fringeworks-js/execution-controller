@@ -67,12 +67,13 @@ export interface ExecutionController<T extends string, P extends CancelPolicy> {
   cancel(): void;
 
   /**
-   * 関数をラップする
+   * 関数をラップする   * `fn` がnull・undefinedの場合はundefinedを返す
    * @param fn
    */
+  wrap<T extends SyncLooseFunction>(fn: T): ControlledFunction<T, P>;
   wrap<T extends SyncLooseFunction>(
     fn: T | null | undefined,
-  ): ControlledFunction<T, P> | null | undefined;
+  ): ControlledFunction<T, P> | undefined;
 
   /**
    * メソッドをラップする

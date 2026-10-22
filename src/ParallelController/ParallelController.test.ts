@@ -169,4 +169,81 @@ describe('ParallelController', () => {
       expect(await wrapped!(3)).toBe(3);
     });
   });
+
+  describe('limit の正規化', () => {
+    it.each([
+      [0, 4],
+      [-1, 4],
+      [NaN, 4],
+      [2.7, 2],
+    ])('limit: %s の場合は %s 件まで同時に実行すること', (limit, expected) => {
+      const controller = new ParallelController({ limit });
+      const wrapped = controller.wrap(() => new Promise<void>(() => {}));
+
+      for (let i = 0; i < 6; i++) {
+        wrapped();
+      }
+      expect(controller.executing).toBe(expected);
+    });
+
+    it('limit: Infinity の場合は上限なしで実行すること', () => {
+      const controller = new ParallelController({ limit: Infinity });
+      const wrapped = controller.wrap(() => new Promise<void>(() => {}));
+
+      for (let i = 0; i < 10; i++) {
+        wrapped();
+      }
+      expect(controller.executing).toBe(10);
+    });
+  });
+
+  it('オプションを省略した場合は既定値で動作すること', () => {
+    const controller = new ParallelController();
+    const wrapped = controller.wrap(() => new Promise<void>(() => {}));
+
+    for (let i = 0; i < 6; i++) {
+      wrapped();
+    }
+    expect(controller.executing).toBe(4);
+  });
+
+  it('多数の呼び出しが呼び出し順に実行されること', async () => {
+    const controller = new ParallelController({ limit: 2 });
+    const started: number[] = [];
+    const wrapped = controller.wrap(async (n: number) => {
+      started.push(n);
+      await Promise.resolve();
+    });
+
+    const expected = Array.from({ length: 100 }, (_, i) => i);
+    await Promise.all(expected.map((n) => wrapped(n)));
+
+    expect(started).toEqual(expected);
+    expect(controller.executing).toBe(0);
+  });
+
+  it('キャンセル後の呼び出しは、キャンセルされた呼び出しの枠を使わずに実行されること', async () => {
+    const controller = new ParallelController({
+      limit: 1,
+      cancelPolicy: 'resolve',
+    });
+    let resolveFirst: () => void;
+    const fn = vi.fn((n: number) =>
+      n === 1
+        ? new Promise<number>((resolve) => (resolveFirst = () => resolve(n)))
+        : Promise.resolve(n),
+    );
+    const wrapped = controller.wrap(fn);
+
+    const p1 = wrapped(1);
+    const p2 = wrapped(2);
+    controller.cancel();
+    const p3 = wrapped(3);
+
+    resolveFirst!();
+    expect(await p1).toBe(1);
+    expect(await p2).toBe(CANCEL);
+    expect(await p3).toBe(3);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
 });

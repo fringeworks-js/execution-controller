@@ -137,4 +137,74 @@ describe('SerialController', () => {
       expect(await wrapped!(4)).toBe(4);
     });
   });
+
+  describe('前の関数の終了から次の開始までの間の呼び出し', () => {
+    it('リスナーから呼ばれても、待機中の呼び出しを追い越さず、同時に実行しないこと', async () => {
+      const controller = new SerialController();
+      const log: string[] = [];
+      let active = 0;
+      let maxActive = 0;
+      const wrapped = controller.wrap(async (name: string) => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        log.push(`start ${name}`);
+        await new Promise((res) => setTimeout(res, 10));
+        log.push(`end ${name}`);
+        active--;
+      });
+
+      let p3: Promise<void> | undefined;
+      controller.subscribe(() => {
+        if (!controller.isExecuting && !p3) {
+          p3 = wrapped('C');
+        }
+      });
+
+      await Promise.all([wrapped('A'), wrapped('B')]);
+      await p3;
+
+      expect(log).toEqual([
+        'start A',
+        'end A',
+        'start B',
+        'end B',
+        'start C',
+        'end C',
+      ]);
+      expect(maxActive).toBe(1);
+    });
+
+    it('完了の後続処理から呼ばれても、待機中の呼び出しを追い越さないこと', async () => {
+      const controller = new SerialController();
+      const log: string[] = [];
+      const wrapped = controller.wrap((name: string) => {
+        log.push(name);
+      });
+
+      const p1 = wrapped('A').then(() => wrapped('C'));
+      const p2 = wrapped('B');
+      await Promise.all([p1, p2]);
+
+      expect(log).toEqual(['A', 'B', 'C']);
+    });
+
+    it('関数の中から同期的に呼ばれた場合は、その関数の完了後に実行されること', async () => {
+      const controller = new SerialController();
+      const log: string[] = [];
+      let inner: Promise<void> | undefined;
+      const wrapped = controller.wrap(async (name: string) => {
+        log.push(`start ${name}`);
+        if (name === 'A') {
+          inner = wrapped('B');
+        }
+        await new Promise((res) => setTimeout(res, 10));
+        log.push(`end ${name}`);
+      });
+
+      await wrapped('A');
+      await inner;
+
+      expect(log).toEqual(['start A', 'end A', 'start B', 'end B']);
+    });
+  });
 });

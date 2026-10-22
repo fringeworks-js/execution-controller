@@ -19,21 +19,45 @@ export default class SerialController<
    */
   private _tail: Promise<void> = Promise.resolve();
 
-  constructor(options: SerialControllerOptions<P>) {
-    // @ts-ignore
+  /**
+   * 完了していない呼び出し（実行中と待機中）の件数
+   */
+  private _unfinished = 0;
+
+  constructor(options: SerialControllerOptions<P> = {}) {
     super({ ...options, type: SerialControllerType });
   }
 
-  _wrap<T extends SyncLooseFunction>(fn: T): WrappedFunction<T> {
-    const me = this;
-    const execute = me._createExecutionFn(fn);
+  protected override _wrap<T extends SyncLooseFunction>(
+    fn: T,
+  ): WrappedFunction<T> {
+    const execute = this._createExecutionFn(fn);
     return (scope: unknown, args: Parameters<T>): WrappedReturn<T> => {
       // 実行を待機する呼び出しを作成
-      const { promise, run } = me._createPending(execute, scope, args);
-      // _tail が解決済み（実行中でない）なら即座に実行を開始し、
-      // そうでなければ then の中で実行する
+      const { promise, run } = this._createPending(execute, scope, args);
+      // 実行中かどうかで判断すると、前の関数の終了から次の開始までの間に
+      // 呼ばれたものが追い越してしまうため、完了していない件数で判断する
+      const isIdle = this._unfinished++ === 0;
+
+      // 関数の中から同期的に呼ばれた場合も後ろにつながるよう、
+      // 実行を始める前に _tail を差し替える
+      const previous = this._tail;
+      let finish!: () => void;
+      this._tail = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
       // runはrejectされないため、エラーでも次が続けられる
-      me._tail = me.isExecuting ? me._tail.then(run) : run();
+      const task = async () => {
+        await run();
+        this._unfinished--;
+        finish();
+      };
+
+      if (isIdle) {
+        task();
+      } else {
+        previous.then(task);
+      }
 
       return promise;
     };

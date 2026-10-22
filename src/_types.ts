@@ -20,8 +20,7 @@ export type MethodType<
  * コントローラー種別毎の処理でラップされた関数の戻り値(promise)
  */
 export type WrappedReturn<T extends SyncLooseFunction> =
-  | Promise<ReturnType<T>>
-  | Promise<typeof CANCEL>;
+  Promise<ReturnType<T>> | Promise<typeof CANCEL>;
 
 /**
  * コントローラー種別毎の処理でラップされた関数

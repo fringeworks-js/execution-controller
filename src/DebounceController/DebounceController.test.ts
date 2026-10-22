@@ -90,6 +90,73 @@ describe('DebounceController', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
+  describe('triggerAt オプション', () => {
+    it('start: 最初の呼び出しをすぐに実行し、呼び出しが続く間はキャンセルすること', async () => {
+      const controller = new DebounceController({
+        wait: 100,
+        triggerAt: 'start',
+        cancelPolicy: 'resolve',
+      });
+      const fn = vi.fn(async (n: number) => n);
+      const wrapped = controller.wrap(fn)!;
+
+      const p1 = wrapped(1);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      // 呼び出しが続く間は待機時間が延び、その間の呼び出しはキャンセルされる
+      await vi.advanceTimersByTimeAsync(90);
+      expect(await wrapped(2)).toBe(CANCEL);
+      await vi.advanceTimersByTimeAsync(90);
+      expect(await wrapped(3)).toBe(CANCEL);
+
+      // 呼び出しが途切れた後の最初の呼び出しはすぐに実行される
+      await vi.advanceTimersByTimeAsync(100);
+      const p4 = wrapped(4);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(await p1).toBe(1);
+      expect(await p4).toBe(4);
+    });
+
+    it('both: 最初の呼び出しをすぐに実行し、呼び出しが途切れたときに最後の呼び出しを実行すること', async () => {
+      const controller = new DebounceController({
+        wait: 100,
+        triggerAt: 'both',
+        cancelPolicy: 'resolve',
+      });
+      const fn = vi.fn(async (n: number) => n);
+      const wrapped = controller.wrap(fn)!;
+
+      const p1 = wrapped(1);
+      await vi.advanceTimersByTimeAsync(50);
+      const p2 = wrapped(2);
+      await vi.advanceTimersByTimeAsync(50);
+      const p3 = wrapped(3);
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(100);
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(await p1).toBe(1);
+      expect(await p2).toBe(CANCEL);
+      expect(await p3).toBe(3);
+    });
+
+    it('both: 呼び出しが1回だけの場合は1回だけ実行すること', async () => {
+      const controller = new DebounceController({
+        wait: 100,
+        triggerAt: 'both',
+      });
+      const fn = vi.fn();
+      const wrapped = controller.wrap(fn)!;
+
+      wrapped();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('sequential オプション', () => {
     it('sequential: false (デフォルト) の場合、前回の完了を待たずに実行されること', async () => {
       const controller = new DebounceController({
@@ -194,6 +261,21 @@ describe('DebounceController', () => {
       expect(fn).not.toHaveBeenCalled();
     });
 
+    it('cancel後の最初の呼び出しはすぐに実行されること（triggerAt: start）', async () => {
+      const controller = new DebounceController({
+        wait: 100,
+        triggerAt: 'start',
+      });
+      const fn = vi.fn();
+      const wrapped = controller.wrap(fn)!;
+
+      wrapped();
+      controller.cancel();
+      wrapped();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+
     it('sequential: 前回の完了を待っている呼び出しもキャンセルされること', async () => {
       const controller = new DebounceController({
         id: 'test',
@@ -214,5 +296,51 @@ describe('DebounceController', () => {
       await vi.runAllTicks();
       expect(fn).not.toHaveBeenCalled();
     });
+  });
+
+  it('オプションを省略した場合は既定値で動作すること', async () => {
+    const controller = new DebounceController();
+    const fn = vi.fn(async () => 'ok');
+
+    const promise = controller.wrap(fn)();
+    await vi.advanceTimersByTimeAsync(239);
+    expect(fn).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await promise).toBe('ok');
+  });
+
+  it('cancelPolicy: reject の場合、実行されなかった呼び出しは CANCEL で reject されること', async () => {
+    const controller = new DebounceController({
+      wait: 100,
+      cancelPolicy: 'reject',
+    });
+    const fn = vi.fn(async (value: string) => value);
+    const wrapped = controller.wrap(fn);
+
+    const rejected = expect(wrapped('a')).rejects.toBe(CANCEL);
+    const p2 = wrapped('b');
+    await rejected;
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await p2).toBe('b');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('同じコントローラーでラップした関数どうしで、呼び出しのまとまりを共有すること', async () => {
+    const controller = new DebounceController({
+      wait: 100,
+      cancelPolicy: 'resolve',
+    });
+    const fnA = vi.fn(async () => 'a');
+    const fnB = vi.fn(async () => 'b');
+
+    const pA = controller.wrap(fnA)();
+    const pB = controller.wrap(fnB)();
+
+    expect(await pA).toBe(CANCEL);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await pB).toBe('b');
+    expect(fnA).not.toHaveBeenCalled();
+    expect(fnB).toHaveBeenCalledTimes(1);
   });
 });

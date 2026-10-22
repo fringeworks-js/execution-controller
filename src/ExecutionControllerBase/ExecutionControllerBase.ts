@@ -1,4 +1,5 @@
 import type { SyncLooseFunction } from '@fringeworks/types';
+import { reportErrors } from '../_internal/errors';
 import type {
   MethodKeys,
   MethodType,
@@ -10,6 +11,7 @@ import { CANCEL } from '../constants';
 import type {
   CancelPolicy,
   ControlledFunction,
+  ControlledReturn,
   ExecutionController,
 } from '../types';
 import type { ExecutionControllerBaseOptions } from './types';
@@ -128,9 +130,19 @@ export default abstract class ExecutionControllerBase<
 
   /**
    * 実行状態の変更をリスナーに通知する
+   *
+   * リスナーの例外は、関数の実行や結果に影響しないよう非同期で投げ直す
    */
   private _notify() {
-    this._listeners.forEach((listener) => listener());
+    const errors: unknown[] = [];
+    this._listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (error) {
+        errors.push(error);
+      }
+    });
+    reportErrors(errors);
   }
 
   /**
@@ -211,26 +223,27 @@ export default abstract class ExecutionControllerBase<
    * cancelPolicyに従ってPromiseを解決する関数を作成する共通処理
    *
    * `wrap` と `wrapMethod` でcancelPolicyの処理が重複しないよう切り出したもの。
-   * scopeがnullの場合は呼び出し時点の`this`をscopeとして使用する。
+   * scopeがundefinedの場合は呼び出し時点の`this`をscopeとして使用する。
    *
-   * @param wrapedFn ラップ済みの関数
-   * @param scope 固定するスコープ。nullの場合は呼び出し時点のthisを使用する
+   * @param wrappedFn ラップ済みの関数
+   * @param scope 固定するスコープ。undefinedの場合は呼び出し時点のthisを使用する
    * @returns
    */
   private _applyCancelPolicy<T extends SyncLooseFunction>(
-    wrapedFn: WrappedFunction<T>,
-    scope?: unknown | null,
+    wrappedFn: WrappedFunction<T>,
+    scope?: unknown,
   ): ControlledFunction<T, P> {
     const cancelFn = CANCEL_FUNCTIONS[this._cancelPolicy];
 
     return async function (
       this: unknown,
       ...args: Parameters<T>
-    ): Promise<any> {
-      const result = await wrapedFn(scope !== undefined ? scope : this, args);
+    ): Promise<ControlledReturn<T, P>> {
+      const result = await wrappedFn(scope !== undefined ? scope : this, args);
 
       if (result === CANCEL) {
-        return cancelFn();
+        // 戻り値は実行時の cancelPolicy（P）で決まり、型の上では絞り込めないため合わせる
+        return cancelFn() as ControlledReturn<T, P>;
       } else {
         return result;
       }
@@ -240,9 +253,15 @@ export default abstract class ExecutionControllerBase<
   /**
    * 関数をラップする
    *
+   * `fn` がnull・undefinedの場合はundefinedを返す。
+   *
    * @param fn
    * @returns
    */
+  wrap<T extends SyncLooseFunction>(fn: T): ControlledFunction<T, P>;
+  wrap<T extends SyncLooseFunction>(
+    fn: T | null | undefined,
+  ): ControlledFunction<T, P> | undefined;
   wrap<T extends SyncLooseFunction>(
     fn: T | null | undefined,
   ): ControlledFunction<T, P> | undefined {

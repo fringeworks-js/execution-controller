@@ -5,7 +5,7 @@ export type ExecutionControllerBaseOptions<
   P extends CancelPolicy = 'ignore',
 > = ExecutionControllerBaseOptionsBase<P> & {
   /**
-   * グループ種別
+   * コントローラー種別
    */
   type?: T;
 };
@@ -14,7 +14,7 @@ export type ExecutionControllerBaseOptionsBase<
   P extends CancelPolicy = CancelPolicy,
 > = {
   /**
-   * グループID
+   * ID
    */
   id?: string;
 

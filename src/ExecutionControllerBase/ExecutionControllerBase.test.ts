@@ -2,6 +2,7 @@ import type { SyncLooseFunction } from '@fringeworks/types';
 import type { WrappedFunction } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
+import type { ControlledFunction } from '../types';
 
 // テスト用の具体的な実装クラス
 class TestController<
@@ -12,7 +13,9 @@ class TestController<
   protected _wrap<F extends SyncLooseFunction>(fn: F): WrappedFunction<F> {
     const executionFn = this._createExecutionFn(fn);
     return async (scope, args) => {
-      if (this.shouldCancel) return CANCEL;
+      if (this.shouldCancel) {
+        return CANCEL;
+      }
       return executionFn(scope, args);
     };
   }
@@ -175,6 +178,84 @@ describe('ExecutionControllerBase', () => {
     it('待機中の呼び出しがなければ何もしないこと', async () => {
       const controller = new TestController({ type: 'test', id: 'test' });
       expect(() => controller.cancel()).not.toThrow();
+    });
+  });
+
+  describe('リスナーの例外', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('関数の実行と結果に影響せず、非同期で投げ直されること', async () => {
+      const tasks: Array<() => void> = [];
+      vi.stubGlobal('queueMicrotask', (task: () => void) => tasks.push(task));
+
+      const controller = new TestController({ type: 'test' });
+      const error = new Error('listener');
+      const listener = vi.fn();
+      controller.subscribe(() => {
+        throw error;
+      });
+      controller.subscribe(listener);
+
+      const fn = vi.fn(() => 'ok');
+      expect(await controller.wrap(fn)()).toBe('ok');
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(controller.executing).toBe(0);
+
+      // 例外を投げたリスナーより後のリスナーも呼ばれる
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      // 開始と終了のそれぞれで投げ直される
+      expect(tasks).toHaveLength(2);
+      expect(() => tasks[0]!()).toThrow(error);
+    });
+
+    it('複数のリスナーが例外を投げた場合は AggregateError にまとめること', async () => {
+      const tasks: Array<() => void> = [];
+      vi.stubGlobal('queueMicrotask', (task: () => void) => tasks.push(task));
+
+      const controller = new TestController({ type: 'test' });
+      const error1 = new Error('1');
+      const error2 = new Error('2');
+      controller.subscribe(() => {
+        throw error1;
+      });
+      controller.subscribe(() => {
+        throw error2;
+      });
+
+      await controller.wrap(() => 'ok')();
+
+      try {
+        tasks[0]!();
+        expect.unreachable();
+      } catch (e) {
+        expect(e).toBeInstanceOf(AggregateError);
+        expect((e as AggregateError).errors).toEqual([error1, error2]);
+      }
+    });
+  });
+
+  describe('wrap の型', () => {
+    it('関数を渡した場合は undefined を含まない型を返すこと', () => {
+      const controller = new TestController({ type: 'test' });
+      const fn = (value: number) => String(value);
+
+      expectTypeOf(controller.wrap(fn)).toEqualTypeOf<
+        ControlledFunction<typeof fn, 'ignore'>
+      >();
+      expectTypeOf(controller.wrap(fn as typeof fn | undefined)).toEqualTypeOf<
+        ControlledFunction<typeof fn, 'ignore'> | undefined
+      >();
+    });
+  });
+
+  describe('CANCEL', () => {
+    it('グローバルのシンボルであること', () => {
+      expect(CANCEL).toBe(
+        Symbol.for('@fringeworks/execution-controller/cancel'),
+      );
     });
   });
 });

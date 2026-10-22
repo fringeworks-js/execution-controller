@@ -92,4 +92,12 @@ describe('ExclusiveController', () => {
     expect(res2).toBe(CANCEL);
     expect(actor.count).toBe(1);
   });
+
+  it('オプションを省略した場合は既定値で動作すること', async () => {
+    const controller = new ExclusiveController();
+    const fn = vi.fn(async () => 'ok');
+
+    expect(await controller.wrap(fn)()).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
 });

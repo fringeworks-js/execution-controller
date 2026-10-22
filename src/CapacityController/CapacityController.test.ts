@@ -116,4 +116,38 @@ describe('CapacityController', () => {
     expect(await p2).toBe(CANCEL);
     expect(await p1).toBe('A');
   });
+
+  describe('limit の正規化', () => {
+    it.each([
+      [0, 4],
+      [-1, 4],
+      [NaN, 4],
+      [2.7, 2],
+    ])(
+      'limit: %s の場合は %s 件まで同時に実行すること',
+      async (limit, expected) => {
+        const controller = new CapacityController({
+          limit,
+          cancelPolicy: 'resolve',
+        });
+        const wrapped = controller.wrap(() => new Promise<void>(() => {}));
+
+        for (let i = 0; i < expected; i++) {
+          wrapped();
+        }
+        expect(controller.executing).toBe(expected);
+        expect(await wrapped()).toBe(CANCEL);
+      },
+    );
+  });
+
+  it('オプションを省略した場合は既定値で動作すること', () => {
+    const controller = new CapacityController();
+    const wrapped = controller.wrap(() => new Promise<void>(() => {}));
+
+    for (let i = 0; i < 6; i++) {
+      wrapped();
+    }
+    expect(controller.executing).toBe(4);
+  });
 });
