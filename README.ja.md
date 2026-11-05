@@ -143,8 +143,8 @@ remove(); // save の実行中なので破棄される
 #### `wrap`
 
 ```ts
-wrap<F extends SyncLooseFunction>(fn: F): ControlledFunction<F, P>
-wrap<F extends SyncLooseFunction>(
+wrap<F extends LooseSyncFunction>(fn: F): ControlledFunction<F, P>
+wrap<F extends LooseSyncFunction>(
   fn: F | null | undefined,
 ): ControlledFunction<F, P> | undefined
 ```

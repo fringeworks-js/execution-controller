@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -18,7 +18,7 @@ export default class ExclusiveController<
     super({ ...options, type: ExclusiveControllerType });
   }
 
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);

@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import type { WrappedFunction } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -10,7 +10,7 @@ class TestController<
 > extends ExecutionControllerBase<'test', P> {
   public shouldCancel = false;
 
-  protected _wrap<F extends SyncLooseFunction>(fn: F): WrappedFunction<F> {
+  protected _wrap<F extends LooseSyncFunction>(fn: F): WrappedFunction<F> {
     const executionFn = this._createExecutionFn(fn);
     return async (scope, args) => {
       if (this.shouldCancel) {

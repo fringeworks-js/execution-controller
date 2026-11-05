@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import type { MethodKeys, MethodType } from './_types';
 import { CANCEL } from './constants';
 
@@ -16,7 +16,7 @@ export type CancelPolicy = 'ignore' | 'resolve' | 'reject';
  * 対象の関数がPromiseを返す場合は、その解決値となる
  */
 export type ControlledReturn<
-  F extends SyncLooseFunction,
+  F extends LooseSyncFunction,
   P extends CancelPolicy,
 > = P extends 'resolve'
   ? Awaited<ReturnType<F>> | typeof CANCEL
@@ -26,7 +26,7 @@ export type ControlledReturn<
  * 実行をコントロールされた関数
  */
 export type ControlledFunction<
-  F extends SyncLooseFunction,
+  F extends LooseSyncFunction,
   P extends CancelPolicy,
 > = (...args: Parameters<F>) => Promise<ControlledReturn<F, P>>;
 
@@ -70,8 +70,8 @@ export interface ExecutionController<T extends string, P extends CancelPolicy> {
    * 関数をラップする   * `fn` がnull・undefinedの場合はundefinedを返す
    * @param fn
    */
-  wrap<T extends SyncLooseFunction>(fn: T): ControlledFunction<T, P>;
-  wrap<T extends SyncLooseFunction>(
+  wrap<T extends LooseSyncFunction>(fn: T): ControlledFunction<T, P>;
+  wrap<T extends LooseSyncFunction>(
     fn: T | null | undefined,
   ): ControlledFunction<T, P> | undefined;
 

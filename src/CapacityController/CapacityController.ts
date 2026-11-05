@@ -1,5 +1,5 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
-import { normalizeLimit } from '../_internal/limit';
+import type { LooseSyncFunction } from '@fringeworks/types';
+import { normalizeLimit } from '../_internal/_limit';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -30,7 +30,7 @@ export default class CapacityController<
    * 関数をラップする
    * 実行枠がいっぱいの場合は CANCEL で解決して即終了する
    */
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);

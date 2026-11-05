@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import type { Pending, WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -31,7 +31,7 @@ export default class DebounceController<
   /**
    * 呼び出しが途切れたときに実行する呼び出し
    */
-  private _trailing: Pending<SyncLooseFunction> | null = null;
+  private _trailing: Pending<LooseSyncFunction> | null = null;
 
   /**
    * 実行中のPromise（sequential用）
@@ -46,7 +46,7 @@ export default class DebounceController<
     this._triggerAt = triggerAt ?? 'end';
   }
 
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);
@@ -101,7 +101,7 @@ export default class DebounceController<
   /**
    * 呼び出しを実行する
    */
-  private _run(pending: Pending<SyncLooseFunction>) {
+  private _run(pending: Pending<LooseSyncFunction>) {
     if (this._sequential) {
       // 前回の関数の実行が終わるのを待ってから、今回の実行を開始する
       // runはrejectされないため、前の実行がエラーでも次へ進む

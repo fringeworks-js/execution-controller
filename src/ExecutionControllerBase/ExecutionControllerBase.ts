@@ -1,5 +1,5 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
-import { reportErrors } from '../_internal/errors';
+import type { LooseSyncFunction } from '@fringeworks/types';
+import { reportErrors } from '../_internal/_errors';
 import type {
   MethodKeys,
   MethodType,
@@ -172,7 +172,7 @@ export default abstract class ExecutionControllerBase<
    * @param args 引数
    * @returns
    */
-  protected _createPending<T extends SyncLooseFunction>(
+  protected _createPending<T extends LooseSyncFunction>(
     execute: (scope: unknown, args: unknown[]) => Promise<unknown>,
     scope: unknown,
     args: Parameters<T>,
@@ -207,7 +207,7 @@ export default abstract class ExecutionControllerBase<
    * @param fn 対象の関数
    * @returns
    */
-  protected _createExecutionFn<T extends SyncLooseFunction>(fn: T) {
+  protected _createExecutionFn<T extends LooseSyncFunction>(fn: T) {
     // 開始終了を捕捉できる非同期の関数
     return async (scope: unknown, args: unknown[]) => {
       try {
@@ -229,7 +229,7 @@ export default abstract class ExecutionControllerBase<
    * @param scope 固定するスコープ。undefinedの場合は呼び出し時点のthisを使用する
    * @returns
    */
-  private _applyCancelPolicy<T extends SyncLooseFunction>(
+  private _applyCancelPolicy<T extends LooseSyncFunction>(
     wrappedFn: WrappedFunction<T>,
     scope?: unknown,
   ): ControlledFunction<T, P> {
@@ -258,11 +258,11 @@ export default abstract class ExecutionControllerBase<
    * @param fn
    * @returns
    */
-  wrap<T extends SyncLooseFunction>(fn: T): ControlledFunction<T, P>;
-  wrap<T extends SyncLooseFunction>(
+  wrap<T extends LooseSyncFunction>(fn: T): ControlledFunction<T, P>;
+  wrap<T extends LooseSyncFunction>(
     fn: T | null | undefined,
   ): ControlledFunction<T, P> | undefined;
-  wrap<T extends SyncLooseFunction>(
+  wrap<T extends LooseSyncFunction>(
     fn: T | null | undefined,
   ): ControlledFunction<T, P> | undefined {
     if (!fn) {
@@ -293,7 +293,7 @@ export default abstract class ExecutionControllerBase<
 
     // scopeをinstanceに固定することで、メソッドのthisが失われない
     return this._applyCancelPolicy(
-      this._wrap(fn as SyncLooseFunction),
+      this._wrap(fn as LooseSyncFunction),
       instance,
     ) as ControlledFunction<MethodType<I, K>, P>;
   }
@@ -302,7 +302,7 @@ export default abstract class ExecutionControllerBase<
    * 関数をラップする
    * @param fn
    */
-  protected abstract _wrap<T extends SyncLooseFunction>(
+  protected abstract _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T>;
 }

@@ -1,11 +1,11 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import { CANCEL } from './constants';
 
 /**
  * オブジェクトのメソッドのキーのみを抽出する
  */
 export type MethodKeys<T extends object> = {
-  [K in keyof T]: T[K] extends SyncLooseFunction ? K : never;
+  [K in keyof T]: T[K] extends LooseSyncFunction ? K : never;
 }[keyof T];
 
 /**
@@ -14,18 +14,18 @@ export type MethodKeys<T extends object> = {
 export type MethodType<
   T extends object,
   K extends keyof T,
-> = T[K] extends SyncLooseFunction ? T[K] : never;
+> = T[K] extends LooseSyncFunction ? T[K] : never;
 
 /**
  * コントローラー種別毎の処理でラップされた関数の戻り値(promise)
  */
-export type WrappedReturn<T extends SyncLooseFunction> =
+export type WrappedReturn<T extends LooseSyncFunction> =
   Promise<ReturnType<T>> | Promise<typeof CANCEL>;
 
 /**
  * コントローラー種別毎の処理でラップされた関数
  */
-export type WrappedFunction<T extends SyncLooseFunction> = (
+export type WrappedFunction<T extends LooseSyncFunction> = (
   scope: unknown,
   args: Parameters<T>,
 ) => WrappedReturn<T>;
@@ -33,7 +33,7 @@ export type WrappedFunction<T extends SyncLooseFunction> = (
 /**
  * 実行を待機している呼び出し
  */
-export type Pending<T extends SyncLooseFunction> = {
+export type Pending<T extends LooseSyncFunction> = {
   /**
    * 呼び出しの結果
    */

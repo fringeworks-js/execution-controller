@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import type { Pending, WrappedFunction, WrappedReturn } from '../_types';
 import { CANCEL } from '../constants';
 import ExecutionControllerBase from '../ExecutionControllerBase';
@@ -31,7 +31,7 @@ export default class ThrottleController<
   /**
    * クールタイム明けに実行する呼び出し
    */
-  private _trailing: Pending<SyncLooseFunction> | null = null;
+  private _trailing: Pending<LooseSyncFunction> | null = null;
 
   /**
    * 実行中のPromise（sequential用）
@@ -50,7 +50,7 @@ export default class ThrottleController<
    * 関数をラップする
    * 実行されなかった呼び出しは CANCEL で解決される
    */
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);
@@ -111,7 +111,7 @@ export default class ThrottleController<
   /**
    * 呼び出しを実行する
    */
-  private _run(pending: Pending<SyncLooseFunction>) {
+  private _run(pending: Pending<LooseSyncFunction>) {
     if (this._sequential) {
       // 前の実行が終わるのを待って実行
       // runはrejectされないため、前の実行がエラーでも次へ進む

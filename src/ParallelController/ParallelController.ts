@@ -1,6 +1,6 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import ExecutionControllerBase from '../ExecutionControllerBase';
-import { normalizeLimit } from '../_internal/limit';
+import { normalizeLimit } from '../_internal/_limit';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import type { CancelPolicy } from '../types';
 import { ParallelControllerType } from './constants';
@@ -39,7 +39,7 @@ export default class ParallelController<
   /**
    * 関数をラップする
    */
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);

@@ -1,4 +1,4 @@
-import type { SyncLooseFunction } from '@fringeworks/types';
+import type { LooseSyncFunction } from '@fringeworks/types';
 import ExecutionControllerBase from '../ExecutionControllerBase';
 import type { WrappedFunction, WrappedReturn } from '../_types';
 import type { CancelPolicy } from '../types';
@@ -28,7 +28,7 @@ export default class SerialController<
     super({ ...options, type: SerialControllerType });
   }
 
-  protected override _wrap<T extends SyncLooseFunction>(
+  protected override _wrap<T extends LooseSyncFunction>(
     fn: T,
   ): WrappedFunction<T> {
     const execute = this._createExecutionFn(fn);
